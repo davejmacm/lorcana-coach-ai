@@ -1,0 +1,60 @@
+{
+    "game_rules": {
+        "win_condition": "A player wins instantly upon reaching 20 or more Lore.",
+        "loss_condition": "A player loses instantly if they are required to draw a card from an empty deck.",
+        "drying_rule": "Characters cannot Quest, Challenge, or use abilities that require the Exert symbol as a cost unless they have been in play since the very beginning of the active player's turn. Non-exert abilities are active immediately."
+    },
+    "core_verbs": {
+        "ready": "Turn a card upright. It is now eligible to be used for game actions.",
+        "exert": "Turn a card sideways to pay for an action (Questing, Challenging, Singing, or activating specific abilities).",
+        "ink": "Placing a card from the hand facedown into the inkwell. Limited to once per turn. Cards must have the inkwell symbol to be inked.",
+        "play": "Paying the ink cost to move a card from the hand into the active play area.",
+        "banish": "Moving a character, item, or location from the play area into the discard pile due to damage, challenges, or card effects."
+    },
+    "keywords": {
+        "bodyguard": {
+            "rule": "This character may enter play exerted. While this character is exerted, an opposing character choosing to challenge must choose this or another bodyguard character if able.",
+            "strategic_coaching_context": "Used defensively to protect key questers or engine cards from being challenged. If the player did not exert their bodyguard, it fails to protect the board."
+        },
+        "rush": {
+            "rule": "This character can challenge the turn it is played.",
+            "strategic_coaching_context": "Provides immediate board interaction. It cannot quest or use exert abilities on its first turn, only challenge. Misplay indicator: Playing a Rush unit and passing without challenging an open threat."
+        },
+        "evasive": {
+            "rule": "Only characters with Evasive can challenge this character.",
+            "strategic_coaching_context": "High-value questers that win games by avoiding standard combat. If the opponent has no Evasive characters, these units should quest aggressively."
+        },
+        "reckless": {
+            "rule": "This character cannot quest and must challenge each turn if able.",
+            "strategic_coaching_context": "Forces combat. Can be bypassed if the active player exerts the character for an ability or a song before the challenge phase."
+        },
+        "resist": {
+            "rule": "Damage dealt to this character or location is reduced by the specified number value (e.g., Resist +2 reduces all incoming damage instances by 2).",
+            "strategic_coaching_context": "Skews combat math heavily. Allows safe 'value trades' where the character takes zero damage while banishing an enemy."
+        },
+        "challenger": {
+            "rule": "While challenging, this character gets the specified addition to its Strength value (e.g., Challenger +3 grants +3 Strength only when attacking).",
+            "strategic_coaching_context": "Offensive tempo tool. Gives no bonus on defense when being challenged by the opponent."
+        },
+        "ward": {
+            "rule": "Opponents cannot choose this character with actions, abilities, or items. It can still be challenged normally.",
+            "strategic_coaching_context": "Protects against targeted removal or bounce spells (like 'Be Prepared' bypasses Ward because it doesn't 'choose')."
+        },
+        "support": {
+            "rule": "Whenever this character quests, you may add its Strength to another chosen character's Strength this turn.",
+            "strategic_coaching_context": "Allows small utilities or defensive characters to temporarily punch up into giant threats during a challenge."
+        },
+        "singer": {
+            "rule": "This character can exert to sing songs as if its ink cost were the specified number value (e.g., a 2-cost Singer 5 can sing a 5-cost song).",
+            "strategic_coaching_context": "Massive tempo acceleration. Allows powerful board clears or card draw to happen turns ahead of schedule."
+        },
+        "sing_together": {
+            "rule": "Any number of your ready characters can exert to pay the song's cost together, provided their combined printed ink costs meet or exceed the song's cost.",
+            "strategic_coaching_context": "Allows massive, late-game high-cost songs to be played early by tapping down a wide board of low-cost characters."
+        },
+        "shift": {
+            "rule": "You may pay the specified Shift cost to play this character on top of another character with the same base name. It inherits the original card's current damage, state (ready/exerted), and drying status.",
+            "strategic_coaching_context": "Cheats the resource curve. If the underlying character was already dry, the shifted character can quest or challenge immediately, completely bypassing summoning sickness."
+        }
+    }
+}

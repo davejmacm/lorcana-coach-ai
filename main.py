@@ -18,6 +18,13 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # Load environmental configurations from .env
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 
+import json
+try:
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "glossary_lorcana.json"), "r", encoding="utf-8") as _gf:
+        lorcana_glossary_content = json.dumps(json.load(_gf), indent=2)
+except Exception:
+    lorcana_glossary_content = "{}"
+
 # Verify Gemini API key is present
 if not os.environ.get("GEMINI_API_KEY"):
     print("[Error] GEMINI_API_KEY is missing from your .env file!")
@@ -49,40 +56,45 @@ lead_coach = adk.Agent(
     name="Lead_Coach",
     model="gemini-2.5-flash",
     instruction=(
-        "You are the Lead Lorcana Coach. Your role is to provide a master-class, premium post-game review for a player using duels.ink game logs.\n\n"
+        f"You are the Lead Lorcana Coach. Your role is to provide a master-class, premium post-game review for a player using duels.ink game logs.\n\n"
 
-        "## Available Tools\n"
-        "- **get_parsed_match_data(game_id)**: Parse a single game log. Returns timeline (markdown) and summary (JSON) with match_metadata.\n"
-        "- **get_match_series(match_id, game_id)**: For BO3 matches, retrieves all games in a series. Provide either the match_id or any game_id from the series.\n"
-        "- **get_match_history(from_date, to_date, queue_filter)**: List recent matches. queue_filter can be 'core', 'infinity', 'quick_play', or 'all'.\n"
-        "- **Meta_Specialist sub-agent**: Has real-time access to the current Lorcana metagame standings and core cards.\n\n"
+        f"You must evaluate all game log interactions using the strict rules and tactical guidance found within lorcana_glossary.json. Pay special attention to keyword constraints (e.g., checking if Shifted or Rush cards acted legally and optimally) to ensure zero mechanical hallucinations when advising the user.\n\n"
+        
+        f"## Lorcana Glossary\n"
+        f"{lorcana_glossary_content}\n\n"
 
-        "## Workflow for Single Game (BO1) Analysis\n"
-        "1. Call get_parsed_match_data with the player's game ID.\n"
-        "2. Check match_metadata.format_type to understand the format context:\n"
-        "   - **core**: Standard constructed using Core + latest set. Limited card pool.\n"
-        "   - **infinity**: All sets are legal. Much wider card pool and different tier expectations.\n"
-        "   - **quick_play**: Unranked Core format for casual play.\n"
-        "3. Consult your Meta_Specialist to determine the opponent's deck archetype.\n"
-        "4. Perform rigorous strategic analysis.\n\n"
+        f"## Available Tools\n"
+        f"- **get_parsed_match_data(game_id)**: Parse a single game log. Returns timeline (markdown) and summary (JSON) with match_metadata.\n"
+        f"- **get_match_series(match_id, game_id)**: For BO3 matches, retrieves all games in a series. Provide either the match_id or any game_id from the series.\n"
+        f"- **get_match_history(from_date, to_date, queue_filter)**: List recent matches. queue_filter can be 'core', 'infinity', 'quick_play', or 'all'.\n"
+        f"- **Meta_Specialist sub-agent**: Has real-time access to the current Lorcana metagame standings and core cards.\n\n"
 
-        "## Workflow for BO3 Series Analysis\n"
-        "1. Call get_match_series with the match_id or game_id.\n"
-        "2. Analyze EACH game individually for its own merits.\n"
-        "3. Then synthesize cross-game trends:\n"
-        "   - How did the player adapt after winning or losing a game?\n"
-        "   - Did their mulligan strategy change between games?\n"
-        "   - Were there patterns in what the opponent adjusted?\n"
-        "   - Identify momentum shifts across the series.\n\n"
+        f"## Workflow for Single Game (BO1) Analysis\n"
+        f"1. Call get_parsed_match_data with the player's game ID.\n"
+        f"2. Check match_metadata.format_type to understand the format context:\n"
+        f"   - **core**: Standard constructed using Core + latest set. Limited card pool.\n"
+        f"   - **infinity**: All sets are legal. Much wider card pool and different tier expectations.\n"
+        f"   - **quick_play**: Unranked Core format for casual play.\n"
+        f"3. Consult your Meta_Specialist to determine the opponent's deck archetype.\n"
+        f"4. Perform rigorous strategic analysis.\n\n"
 
-        "## Analysis Structure\n"
-        "Your analysis MUST cover:\n"
-        "a. **Mulligan Phase Analysis**: Did the player keep the right cards? Give specific advice.\n"
-        "b. **Turn-by-Turn Momentum**: Spot the exact 'Pivot Turn' where momentum shifted and explain why.\n"
-        "c. **Format Context**: Adjust expectations based on whether this is Core, Infinity, or Quick Play.\n"
-        "d. **Ultimate Matchup Summary & Takeaways**: Provide actionable tactical adjustments.\n\n"
+        f"## Workflow for BO3 Series Analysis\n"
+        f"1. Call get_match_series with the match_id or game_id.\n"
+        f"2. Analyze EACH game individually for its own merits.\n"
+        f"3. Then synthesize cross-game trends:\n"
+        f"   - How did the player adapt after winning or losing a game?\n"
+        f"   - Did their mulligan strategy change between games?\n"
+        f"   - Were there patterns in what the opponent adjusted?\n"
+        f"   - Identify momentum shifts across the series.\n\n"
 
-        "Make sure your tone is professional, encouraging, premium, and highly analytical, structured in a beautiful Markdown format.\n"
+        f"## Analysis Structure\n"
+        f"Your analysis MUST cover:\n"
+        f"a. **Mulligan Phase Analysis**: Did the player keep the right cards? Give specific advice.\n"
+        f"b. **Turn-by-Turn Momentum**: Spot the exact 'Pivot Turn' where momentum shifted and explain why.\n"
+        f"c. **Format Context**: Adjust expectations based on whether this is Core, Infinity, or Quick Play.\n"
+        f"d. **Ultimate Matchup Summary & Takeaways**: Provide actionable tactical adjustments.\n\n"
+
+        f"Make sure your tone is professional, encouraging, premium, and highly analytical, structured in a beautiful Markdown format.\n"
         "Note: If the data comes back with 'cached: true', that means the log was already parsed before - this is normal and expected."
     ),
     tools=[get_parsed_match_data, get_match_series, get_match_history],
@@ -98,6 +110,18 @@ runner = adk.Runner(
 
 
 async def run_coaching_session(game_id: str):
+    cache_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cached_analyses", "{}_coach_review.md".format(game_id))
+    if os.path.exists(cache_path):
+        print("\n" + "="*80)
+        print("  [COACH AI] LOADING CACHED ANALYSIS FOR GAME: {}".format(game_id))
+        print("="*80)
+        with open(cache_path, "r", encoding="utf-8") as f:
+            print(f.read())
+        print("\n" + "="*80)
+        print("  [ANALYSIS COMPLETE] READY FOR NEXT GAME!")
+        print("="*80 + "\n")
+        return
+
     prompt = (
         "Analyze game {}. Retrieve the parsed match data, consult the Meta Specialist to identify the "
         "opponent's deck archetype from the current metagame, and perform a master-class coaching review "
@@ -127,6 +151,8 @@ async def run_coaching_session(game_id: str):
 
     if final_text.strip():
         print(final_text.strip())
+        with open(cache_path, "w", encoding="utf-8") as f:
+            f.write(final_text.strip())
     else:
         # Fallback dump of any agent-generated dialogue text
         print("Warning: Standard response stream empty. Displaying model generation logs:")
@@ -142,6 +168,18 @@ async def run_coaching_session(game_id: str):
 
 
 async def run_series_coaching(match_id: str):
+    cache_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cached_analyses", "bo3_series_{}_coach_review.md".format(match_id))
+    if os.path.exists(cache_path):
+        print("\n" + "="*80)
+        print("  [COACH AI] LOADING CACHED BO3 SERIES ANALYSIS: {}".format(match_id))
+        print("="*80)
+        with open(cache_path, "r", encoding="utf-8") as f:
+            print(f.read())
+        print("\n" + "="*80)
+        print("  [SERIES ANALYSIS COMPLETE]")
+        print("="*80 + "\n")
+        return
+
     prompt = (
         "Analyze the BO3 match series with match_id '{}'. Use the get_match_series tool to retrieve all games. "
         "Consult the Meta Specialist to identify the opponent's deck archetype. "
@@ -171,6 +209,8 @@ async def run_series_coaching(match_id: str):
 
     if final_text.strip():
         print(final_text.strip())
+        with open(cache_path, "w", encoding="utf-8") as f:
+            f.write(final_text.strip())
     else:
         for ev in events:
             if hasattr(ev, "content") and ev.content:

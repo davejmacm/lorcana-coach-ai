@@ -45,14 +45,20 @@ def seed_cards():
                     
                 card_id = f"{set_code}-{col_num}"
                 
+                # Combine name and version for full name
+                base_name = c.get("name", "")
+                version = c.get("version", "")
+                full_name = f"{base_name} - {version}" if version else base_name
+                
                 # Extract relevant fields
                 all_cards[card_id] = {
-                    "name": c.get("name", ""),
+                    "name": full_name,
                     "inkwell": c.get("inkwell", False),
                     "cost": c.get("cost", 0),
                     "ink": c.get("ink", ""),
                     "type": c.get("type", []),
-                    "keywords": c.get("keywords", [])
+                    "keywords": c.get("keywords", []),
+                    "image_uris": c.get("image_uris") or {}
                 }
                 
             # /sets/:id/cards is not paginated
