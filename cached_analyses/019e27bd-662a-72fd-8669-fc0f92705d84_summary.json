@@ -1,0 +1,72 @@
+{
+  "game_id": "019e27bd-662a-72fd-8669-fc0f92705d84",
+  "match_metadata": {
+    "match_format": "bo3",
+    "match_id": "019e27b7-a3b7-7939-b5bd-c6e66b7d45bb",
+    "match_game_number": 2,
+    "queue_id": "core-bo3",
+    "queue_name": "Core Set 12 BO3",
+    "ranked": true,
+    "season_name": "Core BO3 - Set 12",
+    "started_at": "2026-05-14T18:26:24.434Z",
+    "ended_at": "2026-05-14T18:27:53.704Z",
+    "duration_seconds": 89,
+    "turns": 1,
+    "result": "win",
+    "end_reason": "concede",
+    "went_first": true,
+    "your_lore": 0,
+    "opp_lore": 0,
+    "mmr_before": null,
+    "mmr_after": null,
+    "mmr_delta": null,
+    "your_deck_colors": "Sapphire/Steel",
+    "opp_display_name": "JFKrug",
+    "opp_deck_colors": "Amber/Ruby",
+    "format_type": "core"
+  },
+  "players": {
+    "player_1": {
+      "name": "Player 1 (You)",
+      "final_lore": 0,
+      "final_ink": 0,
+      "cards_inked": [],
+      "cards_played": [],
+      "initial_hand": [
+        "Woody - Jungle Guide (12-15)",
+        "Wind-Up Frog - Sid's Toy (12-112)",
+        "Hand-in-the-Box - Sid's Toy (12-114)",
+        "Nani - Stage Manager (11-20)",
+        "Hamm - Piggy Bank (12-11)",
+        "Rex - Protective Dinosaur (12-10)",
+        "Jessie - Lively Cowgirl (12-20)"
+      ],
+      "mulligan": {}
+    },
+    "player_2": {
+      "name": "You (Player 2)",
+      "final_lore": 0,
+      "final_ink": 0,
+      "cards_inked": [],
+      "cards_played": [],
+      "initial_hand": [
+        "Minnie Mouse - Practical Traveler (12-159)",
+        "Robin Hood - Champion of Sherwood (3-190)",
+        "Minnie Mouse - Practical Traveler (12-159)",
+        "John Silver - Ship's Cook (6-181)",
+        "Gizmoduck - Duckburg Defender (12-193)",
+        "Alice - Savvy Sailor (6-161)",
+        "Lilo - Bundled Up (11-195)"
+      ],
+      "mulligan": {
+        "mulligan_count": 1,
+        "mulliganed": [
+          "Gizmoduck - Duckburg Defender (12-193)"
+        ],
+        "drawn": [
+          "What Else Can I Do? (12-163)"
+        ]
+      }
+    }
+  }
+}

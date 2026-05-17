@@ -1,0 +1,231 @@
+{
+  "game_id": "019e27b7-a3b7-7939-b5bd-c6e5513fe583",
+  "match_metadata": {
+    "match_format": "bo3",
+    "match_id": "019e27b7-a3b7-7939-b5bd-c6e66b7d45bb",
+    "match_game_number": 1,
+    "queue_id": "core-bo3",
+    "queue_name": "Core Set 12 BO3",
+    "ranked": true,
+    "season_name": "Core BO3 - Set 12",
+    "started_at": "2026-05-14T18:20:06.975Z",
+    "ended_at": "2026-05-14T18:26:24.400Z",
+    "duration_seconds": 377,
+    "turns": 8,
+    "result": "loss",
+    "end_reason": "lore",
+    "went_first": true,
+    "your_lore": 13,
+    "opp_lore": 20,
+    "mmr_before": null,
+    "mmr_after": null,
+    "mmr_delta": null,
+    "your_deck_colors": "Sapphire/Steel",
+    "opp_display_name": "JFKrug",
+    "opp_deck_colors": "Amber/Ruby",
+    "format_type": "core"
+  },
+  "players": {
+    "player_1": {
+      "name": "Player 1 (You)",
+      "final_lore": 20,
+      "final_ink": 6,
+      "cards_inked": [
+        "Hand-in-the-Box - Sid's Toy (12-114)",
+        "Bouncing Ducky - Sid's Toy (12-120)",
+        "Nani - Stage Manager (11-20)",
+        "You've Got a Friend in Me (12-30)",
+        "Bullseye - Loyal Horse (12-17)",
+        "Woody - Waiting for a Friend (12-3)"
+      ],
+      "cards_played": [
+        {
+          "name": "Woody - Waiting for a Friend",
+          "id": "12-3",
+          "cost": 1,
+          "turn": 2
+        },
+        {
+          "name": "Pterodactyl Janie Doll - Sid's Toy",
+          "id": "12-128",
+          "cost": 1,
+          "turn": 3
+        },
+        {
+          "name": "Pterodactyl Janie Doll - Sid's Toy",
+          "id": "12-128",
+          "cost": 1,
+          "turn": 3
+        },
+        {
+          "name": "Woody - Jungle Guide",
+          "id": "12-15",
+          "cost": 5,
+          "turn": 4
+        },
+        {
+          "name": "Rex - Protective Dinosaur",
+          "id": "12-10",
+          "cost": 2,
+          "turn": 5
+        },
+        {
+          "name": "You've Got a Friend in Me",
+          "id": "12-30",
+          "cost": 3,
+          "turn": 5
+        },
+        {
+          "name": "Wind-Up Frog - Sid's Toy",
+          "id": "12-112",
+          "cost": 2,
+          "turn": 5
+        },
+        {
+          "name": "Hand-in-the-Box - Sid's Toy",
+          "id": "12-114",
+          "cost": 2,
+          "turn": 5
+        },
+        {
+          "name": "The Headless Horseman - Terror of Sleepy Hollow",
+          "id": "10-125",
+          "cost": 5,
+          "turn": 6
+        },
+        {
+          "name": "Hamm - Piggy Bank",
+          "id": "12-11",
+          "cost": 2,
+          "turn": 6
+        },
+        {
+          "name": "Woody - Leader of the Toys",
+          "id": "12-21",
+          "cost": 4,
+          "turn": 7
+        },
+        {
+          "name": "Woody - Waiting for a Friend",
+          "id": "12-3",
+          "cost": 1,
+          "turn": 7
+        },
+        {
+          "name": "Rex - Protective Dinosaur",
+          "id": "12-10",
+          "cost": 2,
+          "turn": 8
+        }
+      ],
+      "initial_hand": [
+        "Woody - Waiting for a Friend (12-3)",
+        "Pterodactyl Janie Doll - Sid's Toy (12-128)",
+        "Wind-Up Frog - Sid's Toy (12-112)",
+        "You've Got a Friend in Me (12-30)",
+        "Pterodactyl Janie Doll - Sid's Toy (12-128)",
+        "Hand-in-the-Box - Sid's Toy (12-114)",
+        "Woody - Jungle Guide (12-15)"
+      ],
+      "mulligan": {
+        "mulligan_count": 2,
+        "mulliganed": [
+          "Wind-Up Frog - Sid's Toy (12-112)",
+          "You've Got a Friend in Me (12-30)"
+        ],
+        "drawn": [
+          "Rex - Protective Dinosaur (12-10)",
+          "Nani - Stage Manager (11-20)"
+        ]
+      }
+    },
+    "player_2": {
+      "name": "You (Player 2)",
+      "final_lore": 14,
+      "final_ink": 5,
+      "cards_inked": [
+        "Robin Hood - Champion of Sherwood (3-190)",
+        "John Silver - Ship's Cook (6-181)",
+        "Scuttle - Birdbrained (10-147)",
+        "Minnie Mouse - Practical Traveler (12-159)",
+        "Casa Madrigal - Courtyard (12-170)"
+      ],
+      "cards_played": [
+        {
+          "name": "Minnie Mouse - Practical Traveler",
+          "id": "12-159",
+          "cost": 1,
+          "turn": 1
+        },
+        {
+          "name": "Minnie Mouse - Practical Traveler",
+          "id": "12-159",
+          "cost": 1,
+          "turn": 2
+        },
+        {
+          "name": "Minnie Mouse - Practical Traveler",
+          "id": "12-159",
+          "cost": 1,
+          "turn": 2
+        },
+        {
+          "name": "Alice - Savvy Sailor",
+          "id": "6-161",
+          "cost": 3,
+          "turn": 3
+        },
+        {
+          "name": "Pluto - Guard Dog",
+          "id": "6-186",
+          "cost": 4,
+          "turn": 4
+        },
+        {
+          "name": "The Headless Horseman - Relentless Spirit",
+          "id": "10-194",
+          "cost": 4,
+          "turn": 5
+        },
+        {
+          "name": "Pluto - Guard Dog",
+          "id": "6-186",
+          "cost": 4,
+          "turn": 6
+        },
+        {
+          "name": "Doc - Bold Knight",
+          "id": "5-193",
+          "cost": 2,
+          "turn": 7
+        },
+        {
+          "name": "Robin Hood - Desert Wanderer",
+          "id": "12-137",
+          "cost": 1,
+          "turn": 7
+        },
+        {
+          "name": "Doc - Bold Knight",
+          "id": "5-193",
+          "cost": 2,
+          "turn": 7
+        }
+      ],
+      "initial_hand": [
+        "Minnie Mouse - Practical Traveler (12-159)",
+        "Minnie Mouse - Practical Traveler (12-159)",
+        "Doc - Bold Knight (5-193)",
+        "Minnie Mouse - Practical Traveler (12-159)",
+        "Robin Hood - Champion of Sherwood (3-190)",
+        "Pluto - Guard Dog (6-186)",
+        "John Silver - Ship's Cook (6-181)"
+      ],
+      "mulligan": {
+        "mulligan_count": 0,
+        "mulliganed": [],
+        "drawn": []
+      }
+    }
+  }
+}

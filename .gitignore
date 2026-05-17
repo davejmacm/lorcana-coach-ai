@@ -1,0 +1,23 @@
+# Virtual environment
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Environment secrets
+.env
+
+# Exploratory/scratch scripts from Phase 1
+exploratoryScripts/
+
+# IDE
+.vscode/
+
+# Temp decompressed logs
+*_log.txt
+sample_log.txt
+
+# OS
+Thumbs.db
+.DS_Store

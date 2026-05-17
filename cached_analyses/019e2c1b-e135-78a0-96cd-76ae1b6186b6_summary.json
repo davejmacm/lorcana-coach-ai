@@ -1,0 +1,153 @@
+{
+  "game_id": "019e2c1b-e135-78a0-96cd-76ae1b6186b6",
+  "match_metadata": {
+    "match_format": "bo1",
+    "match_id": null,
+    "match_game_number": null,
+    "queue_id": "core-bo1",
+    "queue_name": "Core Set 12 BO1",
+    "ranked": true,
+    "season_name": "Core BO1 - Set 12",
+    "started_at": "2026-05-15T14:48:05.180Z",
+    "ended_at": "2026-05-15T14:51:18.318Z",
+    "duration_seconds": 193,
+    "turns": 5,
+    "result": "win",
+    "end_reason": "concede",
+    "went_first": true,
+    "your_lore": 18,
+    "opp_lore": 2,
+    "mmr_before": 1302,
+    "mmr_after": 1306,
+    "mmr_delta": 4,
+    "your_deck_colors": "Sapphire/Steel",
+    "opp_display_name": "weco1",
+    "opp_deck_colors": "Amethyst/Sapphire",
+    "format_type": "core"
+  },
+  "players": {
+    "player_1": {
+      "name": "You (Player 1)",
+      "final_lore": 18,
+      "final_ink": 5,
+      "cards_inked": [
+        "Minnie Mouse - Practical Traveler (12-159)",
+        "Pluto - Guard Dog (6-186)",
+        "Strength of a Raging Fire (2-201)",
+        "The Headless Horseman - Relentless Spirit (10-194)",
+        "Casa Madrigal - Courtyard (12-170)"
+      ],
+      "cards_played": [
+        {
+          "name": "Minnie Mouse - Practical Traveler",
+          "id": "12-159",
+          "cost": 1,
+          "turn": 1
+        },
+        {
+          "name": "Lilo - Bundled Up",
+          "id": "11-195",
+          "cost": 2,
+          "turn": 2
+        },
+        {
+          "name": "Splatter Phoenix - Rejected Artist",
+          "id": "11-153",
+          "cost": 2,
+          "turn": 3
+        },
+        {
+          "name": "The Headless Horseman - Relentless Spirit",
+          "id": "10-194",
+          "cost": 4,
+          "turn": 4
+        },
+        {
+          "name": "Scuttle - Birdbrained",
+          "id": "10-147",
+          "cost": 5,
+          "turn": 5
+        }
+      ],
+      "initial_hand": [
+        "The Headless Horseman - Relentless Spirit (10-194)",
+        "Pluto - Guard Dog (6-186)",
+        "Strength of a Raging Fire (2-201)",
+        "Scuttle - Birdbrained (10-147)",
+        "Minnie Mouse - Practical Traveler (12-159)",
+        "Lilo - Bundled Up (11-195)",
+        "Gizmoduck - Duckburg Defender (12-193)"
+      ],
+      "mulligan": {
+        "mulligan_count": 4,
+        "mulliganed": [
+          "Gizmoduck - Duckburg Defender (12-193)",
+          "Scuttle - Birdbrained (10-147)",
+          "Strength of a Raging Fire (2-201)",
+          "Pluto - Guard Dog (6-186)"
+        ],
+        "drawn": [
+          "Splatter Phoenix - Rejected Artist (11-153)",
+          "Pluto - Guard Dog (6-186)",
+          "Casa Madrigal - Courtyard (12-170)",
+          "Minnie Mouse - Practical Traveler (12-159)"
+        ]
+      }
+    },
+    "player_2": {
+      "name": "weco1",
+      "final_lore": 2,
+      "final_ink": 4,
+      "cards_inked": [
+        "Tipo - Growing Son (5-157)",
+        "Performance Review (10-64)",
+        "Sail the Azurite Sea (6-163)",
+        "Darkwing Duck - Drake Mallard (11-145)"
+      ],
+      "cards_played": [
+        {
+          "name": "Tipo - Growing Son",
+          "id": "5-157",
+          "cost": 2,
+          "turn": 2
+        },
+        {
+          "name": "Zipper - Big Helper",
+          "id": "12-150",
+          "cost": 4,
+          "turn": 3
+        },
+        {
+          "name": "Hades - Looking for a Deal",
+          "id": "10-56",
+          "cost": 5,
+          "turn": 4
+        }
+      ],
+      "initial_hand": [
+        "Tipo - Growing Son (5-157)",
+        "Merryweather - Feisty Fairy (12-139)",
+        "Merryweather - Feisty Fairy (12-139)",
+        "Zipper - Astute Decoy (6-141)",
+        "Ranger Plane (12-167)",
+        "Scuttle - Birdbrained (10-147)",
+        "Tipo - Growing Son (5-157)"
+      ],
+      "mulligan": {
+        "mulligan_count": 4,
+        "mulliganed": [
+          "Scuttle - Birdbrained (10-147)",
+          "Zipper - Astute Decoy (6-141)",
+          "Merryweather - Feisty Fairy (12-139)",
+          "Merryweather - Feisty Fairy (12-139)"
+        ],
+        "drawn": [
+          "Junior Woodchuck Guidebook (10-66)",
+          "Dash Parr - Lava Runner (12-61)",
+          "Zipper - Big Helper (12-150)",
+          "Performance Review (10-64)"
+        ]
+      }
+    }
+  }
+}

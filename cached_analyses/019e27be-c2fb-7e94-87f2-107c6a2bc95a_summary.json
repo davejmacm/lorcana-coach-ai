@@ -1,0 +1,123 @@
+{
+  "game_id": "019e27be-c2fb-7e94-87f2-107c6a2bc95a",
+  "match_metadata": {
+    "match_format": "bo3",
+    "match_id": "019e27b7-a3b7-7939-b5bd-c6e66b7d45bb",
+    "match_game_number": 3,
+    "queue_id": "core-bo3",
+    "queue_name": "Core Set 12 BO3",
+    "ranked": true,
+    "season_name": "Core BO3 - Set 12",
+    "started_at": "2026-05-14T18:27:53.731Z",
+    "ended_at": "2026-05-14T18:31:44.127Z",
+    "duration_seconds": 230,
+    "turns": 3,
+    "result": "win",
+    "end_reason": "concede",
+    "went_first": false,
+    "your_lore": 2,
+    "opp_lore": 0,
+    "mmr_before": 993,
+    "mmr_after": 1041,
+    "mmr_delta": 48,
+    "your_deck_colors": "Sapphire/Steel",
+    "opp_display_name": "JFKrug",
+    "opp_deck_colors": "Amber/Ruby",
+    "format_type": "core"
+  },
+  "players": {
+    "player_1": {
+      "name": "Player 1 (You)",
+      "final_lore": 0,
+      "final_ink": 1,
+      "cards_inked": [
+        "Hand-in-the-Box - Sid's Toy (12-114)"
+      ],
+      "cards_played": [
+        {
+          "name": "Pterodactyl Janie Doll - Sid's Toy",
+          "id": "12-128",
+          "cost": 1,
+          "turn": 1
+        }
+      ],
+      "initial_hand": [
+        "The Headless Horseman - Terror of Sleepy Hollow (10-125)",
+        "Woody - Jungle Guide (12-15)",
+        "Sid Phillips - Toy Surgeon (12-126)",
+        "Bullseye - Loyal Horse (12-17)",
+        "Jessie - Lively Cowgirl (12-20)",
+        "Pterodactyl Janie Doll - Sid's Toy (12-128)",
+        "Jessie - Lively Cowgirl (12-20)"
+      ],
+      "mulligan": {
+        "mulligan_count": 6,
+        "mulliganed": [
+          "The Headless Horseman - Terror of Sleepy Hollow (10-125)",
+          "Woody - Jungle Guide (12-15)",
+          "Sid Phillips - Toy Surgeon (12-126)",
+          "Jessie - Lively Cowgirl (12-20)",
+          "Bullseye - Loyal Horse (12-17)",
+          "Jessie - Lively Cowgirl (12-20)"
+        ],
+        "drawn": [
+          "Rex - Protective Dinosaur (12-10)",
+          "Hand-in-the-Box - Sid's Toy (12-114)",
+          "Grandmother Willow - Ancient Advisor (11-13)",
+          "Hand-in-the-Box - Sid's Toy (12-114)",
+          "Hand-in-the-Box - Sid's Toy (12-114)",
+          "Hand-in-the-Box - Sid's Toy (12-114)"
+        ]
+      }
+    },
+    "player_2": {
+      "name": "You (Player 2)",
+      "final_lore": 2,
+      "final_ink": 2,
+      "cards_inked": [
+        "Robin Hood - Desert Wanderer (12-137)",
+        "Pluto - Guard Dog (6-186)"
+      ],
+      "cards_played": [
+        {
+          "name": "Splatter Phoenix - Rejected Artist",
+          "id": "11-153",
+          "cost": 2,
+          "turn": 1
+        },
+        {
+          "name": "Minnie Mouse - Practical Traveler",
+          "id": "12-159",
+          "cost": 1,
+          "turn": 2
+        },
+        {
+          "name": "Robin Hood - Desert Wanderer",
+          "id": "12-137",
+          "cost": 1,
+          "turn": 2
+        }
+      ],
+      "initial_hand": [
+        "Casa Madrigal - Courtyard (12-170)",
+        "Doc - Bold Knight (5-193)",
+        "Minnie Mouse - Practical Traveler (12-159)",
+        "Casa Madrigal - Courtyard (12-170)",
+        "Robin Hood - Desert Wanderer (12-137)",
+        "Splatter Phoenix - Rejected Artist (11-153)",
+        "The Headless Horseman - Relentless Spirit (10-194)"
+      ],
+      "mulligan": {
+        "mulligan_count": 2,
+        "mulliganed": [
+          "Casa Madrigal - Courtyard (12-170)",
+          "Casa Madrigal - Courtyard (12-170)"
+        ],
+        "drawn": [
+          "Pluto - Guard Dog (6-186)",
+          "Robin Hood - Desert Wanderer (12-137)"
+        ]
+      }
+    }
+  }
+}
