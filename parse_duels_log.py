@@ -312,7 +312,11 @@ def parse_logs(log_path, csv_path=None, game_id=None):
             card_name = data.get("cardName")
             card_id = data.get("cardId")
             inkwell[p] += 1
-            cards_inked[p].append("{} ({})".format(card_name, card_id))
+            cards_inked[p].append({
+                "name": card_name,
+                "id": card_id,
+                "turn": turn_num
+            })
             timeline.append("- **{}** inked: {} (Inkwell: {})".format(p_name, format_card_string(card_name, card_id), inkwell[p]))
 
         elif t == "CARD_PLAYED":

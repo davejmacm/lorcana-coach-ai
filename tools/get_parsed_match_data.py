@@ -18,7 +18,7 @@ from parse_duels_log import parse_logs
 from tools.download_game_log import download_game_log
 
 
-def get_parsed_match_data(game_id: str) -> str:
+def get_parsed_match_data(game_id: str, token: str = None, player_id: str = None) -> str:
     """Parses and retrieves match history logs for a specific Lorcana game ID.
 
     Downloads the log from Duels.ink if not cached locally, parses it into
@@ -27,16 +27,25 @@ def get_parsed_match_data(game_id: str) -> str:
 
     Args:
         game_id: The unique identifier of the game (e.g., '019e3200-de01-74be-8897-57aeeffaccb0').
+        token: Optional user bearer token.
+        player_id: Optional unique Player ID for user sandbox cache isolation.
 
     Returns:
         A JSON string containing 'timeline' (markdown), 'summary' (structured JSON),
         and 'cached' (boolean indicating if this was a cache hit).
     """
-    print("[Tool] Running get_parsed_match_data for game_id: {}".format(game_id))
+    print("[Tool] Running get_parsed_match_data for game_id: {} (player_id={})".format(game_id, player_id))
 
     # Set up paths
-    cached_analyses_dir = os.path.join(PROJECT_ROOT, "cached_analyses")
-    cached_logs_dir = os.path.join(PROJECT_ROOT, "cached_logs")
+    if player_id:
+        cached_analyses_dir = os.path.join(PROJECT_ROOT, "cached_analyses", player_id)
+        cached_logs_dir = os.path.join(PROJECT_ROOT, "cached_logs", player_id)
+        csv_path = os.path.join(cached_analyses_dir, "match-history.csv")
+    else:
+        cached_analyses_dir = os.path.join(PROJECT_ROOT, "cached_analyses")
+        cached_logs_dir = os.path.join(PROJECT_ROOT, "cached_logs")
+        csv_path = os.path.join(PROJECT_ROOT, "match-history.csv")
+
     os.makedirs(cached_analyses_dir, exist_ok=True)
     os.makedirs(cached_logs_dir, exist_ok=True)
 
@@ -62,7 +71,7 @@ def get_parsed_match_data(game_id: str) -> str:
             print("[Tool] Cache read error, re-parsing: {}".format(e))
 
     # ---- DOWNLOAD LOG ----
-    gz_path = download_game_log(game_id)
+    gz_path = download_game_log(game_id, token=token, player_id=player_id)
     if gz_path.startswith("ERROR"):
         return json.dumps({"error": gz_path})
 
@@ -78,11 +87,10 @@ def get_parsed_match_data(game_id: str) -> str:
             return json.dumps({"error": "Failed to decompress log: {}".format(str(e))})
 
     # ---- PARSE ----
-    csv_path = os.path.join(PROJECT_ROOT, "match-history.csv")
     try:
         timeline_content, summary_content = parse_logs(
             log_path=log_txt_path,
-            csv_path=csv_path,
+            csv_path=csv_path if os.path.exists(csv_path) else os.path.join(PROJECT_ROOT, "match-history.csv"),
             game_id=game_id
         )
     except Exception as e:

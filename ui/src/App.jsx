@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Hero from './components/Hero';
 import TokenModal from './components/TokenModal';
 import Dashboard from './components/Dashboard';
@@ -8,11 +8,26 @@ import './index.css';
 function App() {
   const [view, setView] = useState('hero'); // 'hero' | 'dashboard'
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [token, setToken] = useState(() => localStorage.getItem('duels_ink_token') || '');
 
-  const handleConnect = (token) => {
-    console.log("Token connected:", token);
+  useEffect(() => {
+    if (token) {
+      setView('dashboard');
+    }
+  }, [token]);
+
+  const handleConnect = (newToken) => {
+    console.log("Token connected:", newToken);
+    localStorage.setItem('duels_ink_token', newToken);
+    setToken(newToken);
     setIsModalOpen(false);
     setView('dashboard');
+  };
+
+  const handleDisconnect = () => {
+    localStorage.removeItem('duels_ink_token');
+    setToken('');
+    setView('hero');
   };
 
   return (
@@ -22,7 +37,7 @@ function App() {
       )}
       
       {view === 'dashboard' && (
-        <Dashboard />
+        <Dashboard token={token} onDisconnect={handleDisconnect} />
       )}
 
       <AnimatePresence>

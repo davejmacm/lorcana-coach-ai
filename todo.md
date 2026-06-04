@@ -7,34 +7,46 @@ This living document outlines outstanding refinements, architectural updates, an
 ## 📅 Immediate Next Steps (Tomorrow's Session)
 
 ### 🔧 Log Retrieval & Format Extensions
-- [ ] **Dynamic Log Downloader Integration:** Extend the local match retrieval scripts so they can automatically query other `game_id` entries directly from `match-history.csv` and pull the compressed `.logs.gz` files from the Duels.ink CDN on demand.
-- [ ] **BO3 Format Support:** 
-  - [ ] Update [parse_duels_log.py](file:///e:/Antigravity%20workspaces/Lorcana%20Coach%20AI/Log%20fetching/parse_duels_log.py) to parse BO3 games (tracking `match_id` and specific game numbers, e.g. game `1`, `2`, `3` in a series).
-  - [ ] Enable the `Lead_Coach` agent to synthesize cross-game match trends (e.g. how the player adapted after losing Game 1).
-- [ ] **Core vs. Infinity Queues:** Teach the parser to distinguish between standard `Core` constructed sets and `Infinity` format rules, adjusting card expectations and tier lists based on `queue_name` / `queue_id`.
+- [x] **Dynamic Log Downloader Integration:** Extend the local match retrieval scripts so they can automatically query other `game_id` entries directly from `match-history.csv` and pull the compressed `.logs.gz` files from the Duels.ink CDN on demand.
+- [x] **BO3 Format Support:** 
+  - [x] Update [parse_duels_log.py](file:///e:/Antigravity%20workspaces/Lorcana%20Coach%20AI/Log%20fetching/parse_duels_log.py) to parse BO3 games (tracking `match_id` and specific game numbers, e.g. game `1`, `2`, `3` in a series).
+  - [x] Enable the `Lead_Coach` agent to synthesize cross-game match trends (e.g. how the player adapted after losing Game 1).
+- [x] **Core vs. Infinity Queues:** Teach the parser to distinguish between standard `Core` constructed sets and `Infinity` format rules, adjusting card expectations and tier lists based on `queue_name` / `queue_id`.
 
 ### ⚡ Optimization & Caching
-- [ ] **Analysis Caching Layer:** Avoid duplicate heavy API and log parsing calls.
-  - [ ] Implement a local caching mechanism (e.g., check if a structured coaching report `.json` or `.md` exists for the given `game_id` under a dedicated `/cached_analyses` directory).
-  - [ ] Return the pre-generated review instantly if the game has already been analyzed.
+- [x] **Analysis Caching Layer:** Avoid duplicate heavy API and log parsing calls.
+  - [x] Implement a local caching mechanism (e.g., check if a structured coaching report `.json` or `.md` exists for the given `game_id` under a dedicated `/cached_analyses` directory).
+  - [x] Return the pre-generated review instantly if the game has already been analyzed.
 
 ### 🧹 Structure & Documentation Cleanup
-- [ ] **Directory Reorganization:** Organize the root directory to separate operational files, utility scripts, and assets:
+- [x] **Directory Reorganization:** Organize the root directory to separate operational files, utility scripts, and assets:
   - `/tools` - ADK agent tools
   - `/cached_logs` - Downloaded `.logs.gz` matches
   - `/cached_analyses` - Generated markdown/JSON coaching reports
-- [ ] **Developer Documentation:** Write a clear `README.md` documenting architecture, requirements, and environment setups.
+- [x] **Developer Documentation:** Write a clear `README.md` documenting architecture, requirements, and environment setups.
 
 ---
 
 ## 🚀 Next Phase Items (Future Deliverables)
 
 ### 📱 User Interface (Mobile-Friendly Web App)
-- [ ] **Match History Dashboard:**
-  - [ ] Fetch the list of previous matches from `match-history.csv` or API.
-  - [ ] Display an expandable/collapsible list grouped by deck colors or opponent display name.
-- [ ] **Expandable Match Cards:** Click a match card to see an overview (Result, Lore, Round Count, Deck colors).
-- [ ] **"Ask Coach" Integration:** Implement a premium, mobile-responsive "Ask Coach" button next to each match. Clicking it submits the `game_id` to the ADK orchestrator in the background and renders the Coach's review directly inside the web interface.
+- [x] **Match History Dashboard:**
+  - [x] Fetch the list of previous matches from `match-history.csv` or API.
+  - [x] Display an expandable/collapsible list grouped by deck colors or opponent display name.
+- [x] **Expandable Match Cards:** Click a match card to see an overview (Result, Lore, Round Count, Deck colors).
+- [x] **"Ask Coach" Integration:** Implement a premium, mobile-responsive "Ask Coach" button next to each match. Clicking it submits the `game_id` to the ADK orchestrator in the background and renders the Coach's review directly inside the web interface.
+
+### 🎨 UI Enhancements
+- [ ] Input validation for bearer token
+- [ ] Fix input validation to actually validate rather than just formatting the input
+- [ ] Potential for authentication to save re-entering token each time
+- [ ] Update readme for UI
+
+### 🌐 API
+- [ ] Implement fastAPI layer
+- [ ] Decide on how to handle 'aggregated improvements' with token efficiency in mind
+- [ ] Data structure to UI
+- [ ] Update readme for API
 
 ### 🧠 Advanced Coaching & Analytics
 - [ ] **Matchup Trend Engines:**
@@ -59,3 +71,11 @@ This living document outlines outstanding refinements, architectural updates, an
 ### 🔀 Alternative Scenario Simulator ("What-Ifs")
 - [ ] Allow users to branch the log state at a specific turn.
 - [ ] *Example:* "What if I challenged their Flynn Rider instead of questing? Let's branch the game state and run a simulated outcome of the next two turns."
+
+---
+
+## 🌟 Stretch Goals
+- [ ] **Deterministic Turn-by-Turn Win-Probability Graphs:**
+  - [ ] Implement a mathematical momentum index formula in Python (`parse_duels_log.py`) based on comparative board presence, quest potential, hand size, and lore.
+  - [ ] Expose turn-by-turn probability percentages via API and render a visual timeline chart in React.
+

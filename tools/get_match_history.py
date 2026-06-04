@@ -11,13 +11,14 @@ import sys
 import requests
 from datetime import datetime, timezone
 from dotenv import load_dotenv
+from tools.context import current_token, current_player_id
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
 
-def refresh_match_history_csv(from_date=None, to_date=None, queue_filter=None):
+def refresh_match_history_csv(from_date=None, to_date=None, queue_filter=None, token=None, player_id=None):
     """Fetch match history from Duels.ink API and save to match-history.csv.
 
     Args:
@@ -25,13 +26,19 @@ def refresh_match_history_csv(from_date=None, to_date=None, queue_filter=None):
         to_date: ISO date string for end range (default: now).
         queue_filter: Queue filter string (e.g., 'core-bo1,core-bo3,infinity-bo1').
                       If None, fetches all matchmaking queues.
+        token: User's Duels.ink API token.
+        player_id: Unique Player ID for sandboxed user caching.
 
     Returns:
         Path to the saved CSV file, or an error string.
     """
-    token = os.environ.get("DUELS_INK_TOKEN")
+    if not player_id:
+        player_id = current_player_id.get() or None
+
     if not token:
-        return "ERROR: DUELS_INK_TOKEN not found in .env file"
+        token = current_token.get() or os.environ.get("DUELS_INK_TOKEN")
+    if not token:
+        return "ERROR: DUELS_INK_TOKEN not found in .env file or headers"
 
     # Build query parameters
     params = {
@@ -55,7 +62,12 @@ def refresh_match_history_csv(from_date=None, to_date=None, queue_filter=None):
     if queue_filter:
         params["queue"] = queue_filter
 
-    csv_path = os.path.join(PROJECT_ROOT, "match-history.csv")
+    if player_id:
+        target_dir = os.path.join(PROJECT_ROOT, "cached_analyses", player_id)
+        os.makedirs(target_dir, exist_ok=True)
+        csv_path = os.path.join(target_dir, "match-history.csv")
+    else:
+        csv_path = os.path.join(PROJECT_ROOT, "match-history.csv")
     all_content = ""
     header_saved = False
 
@@ -104,7 +116,7 @@ def refresh_match_history_csv(from_date=None, to_date=None, queue_filter=None):
         return "ERROR: Failed to fetch match history: {}".format(str(e))
 
 
-def get_match_history(from_date: str = None, to_date: str = None, queue_filter: str = "all") -> str:
+def get_match_history(from_date: str = None, to_date: str = None, queue_filter: str = "all", token: str = None, player_id: str = None) -> str:
     """Retrieves the player's match history as a UI-ready JSON structure.
 
     Refreshes the match-history.csv from the Duels.ink API, then parses it
@@ -115,23 +127,34 @@ def get_match_history(from_date: str = None, to_date: str = None, queue_filter: 
         from_date: Optional ISO date string for start of date range (e.g., '2026-05-01T00:00:00Z').
         to_date: Optional ISO date string for end of date range.
         queue_filter: Filter by queue type: 'core', 'infinity', 'quick_play', or 'all' (default).
+        token: Optional user Duels.ink token.
+        player_id: Optional unique Player ID for user sandbox isolation.
 
     Returns:
         A JSON string with total stats, summary, and a list of match entries.
     """
-    print("[Tool] Running get_match_history (from={}, to={}, queue={})".format(from_date, to_date, queue_filter))
+    if not player_id:
+        player_id = current_player_id.get() or None
+    if not token:
+        token = current_token.get() or None
+
+    print("[Tool] Running get_match_history (from={}, to={}, queue={}, player_id={})".format(from_date, to_date, queue_filter, player_id))
 
     # Always re-fetch from API
-    result = refresh_match_history_csv(from_date=from_date, to_date=to_date)
+    result = refresh_match_history_csv(from_date=from_date, to_date=to_date, token=token, player_id=player_id)
     if isinstance(result, str) and result.startswith("ERROR"):
         return json.dumps({"error": result})
 
     # Load CSV
-    csv_path = os.path.join(PROJECT_ROOT, "match-history.csv")
+    if player_id:
+        csv_path = os.path.join(PROJECT_ROOT, "cached_analyses", player_id, "match-history.csv")
+        cached_analyses_dir = os.path.join(PROJECT_ROOT, "cached_analyses", player_id)
+    else:
+        csv_path = os.path.join(PROJECT_ROOT, "match-history.csv")
+        cached_analyses_dir = os.path.join(PROJECT_ROOT, "cached_analyses")
+
     if not os.path.exists(csv_path):
         return json.dumps({"error": "match-history.csv not found"})
-
-    cached_analyses_dir = os.path.join(PROJECT_ROOT, "cached_analyses")
 
     with open(csv_path, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)

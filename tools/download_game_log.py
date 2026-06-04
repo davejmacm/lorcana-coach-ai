@@ -7,6 +7,7 @@ in the cached_logs/ directory to avoid redundant downloads.
 import os
 import requests
 from dotenv import load_dotenv
+from tools.context import current_token, current_player_id
 
 # Resolve project root directory
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -15,16 +16,24 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
 
-def download_game_log(game_id: str) -> str:
+def download_game_log(game_id: str, token: str = None, player_id: str = None) -> str:
     """Downloads a game log (.logs.gz) from Duels.ink if not already cached.
 
     Args:
         game_id: The unique identifier of the game.
+        token: Optional user bearer token.
+        player_id: Optional unique Player ID for user sandbox cache isolation.
 
     Returns:
         The absolute file path to the cached .logs.gz file, or an error message string.
     """
-    cached_dir = os.path.join(PROJECT_ROOT, "cached_logs")
+    if not player_id:
+        player_id = current_player_id.get() or None
+
+    if player_id:
+        cached_dir = os.path.join(PROJECT_ROOT, "cached_logs", player_id)
+    else:
+        cached_dir = os.path.join(PROJECT_ROOT, "cached_logs")
     os.makedirs(cached_dir, exist_ok=True)
 
     cached_path = os.path.join(cached_dir, "{}.logs.gz".format(game_id))
@@ -35,9 +44,10 @@ def download_game_log(game_id: str) -> str:
         return cached_path
 
     # Download from API
-    token = os.environ.get("DUELS_INK_TOKEN")
     if not token:
-        return "ERROR: DUELS_INK_TOKEN not found in .env file"
+        token = current_token.get() or os.environ.get("DUELS_INK_TOKEN")
+    if not token:
+        return "ERROR: DUELS_INK_TOKEN not found in .env file or headers"
 
     url = "https://duels.ink/g/{}".format(game_id)
     print("[Downloader] Downloading log from: {}".format(url))

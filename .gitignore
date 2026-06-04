@@ -14,9 +14,23 @@ exploratoryScripts/
 # IDE
 .vscode/
 
-# Temp decompressed logs
+# ---------- Cached / generated data (user-specific, regenerable) ----------
+# Downloaded game logs (raw + decompressed)
+cached_logs/
 *_log.txt
 sample_log.txt
+
+# Parsed analyses, coaching reviews, deck snapshots
+cached_analyses/
+
+# Legacy root-level match history CSV (now per-player in cached_analyses/)
+match-history.csv
+
+# ---------- Large data files (should be seeded/downloaded, not in git) ----------
+lorcana_cards.json
+
+# ---------- Legacy files ----------
+fetch_match_history.py
 
 # OS
 Thumbs.db

@@ -1,59 +1,156 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import heroVideo from '../assets/heroAssets/LorcanaCoachAIHero.mp4';
+import heroFallback from '../assets/heroAssets/staticHeroBGCards.jpeg';
 import '../index.css';
 
 const Hero = ({ onGetStarted }) => {
-  const cards = [
-    { id: 1, text: "Gain Powerful Insights", color: "#8e2de2" },
-    { id: 2, text: "Gameplay Analysis", color: "#4a00e0" },
-    { id: 3, text: "Automated Match Logs", color: "#24243e" },
-  ];
+  const [useVideo, setUseVideo] = useState(true);
+
+  useEffect(() => {
+    // Fallback to static image on small viewports for battery/bandwidth efficiency
+    const checkViewport = () => {
+      if (window.innerWidth < 768) {
+        setUseVideo(false);
+      } else {
+        setUseVideo(true);
+      }
+    };
+    
+    checkViewport();
+    window.addEventListener('resize', checkViewport);
+    return () => window.removeEventListener('resize', checkViewport);
+  }, []);
 
   return (
-    <div className="hero-container">
-      <div className="cards-container">
-        {cards.map((card, index) => (
-          <motion.div
-            key={card.id}
-            className="card"
-            style={{ 
-              background: `linear-gradient(145deg, rgba(255,255,255,0.1), ${card.color})`,
-              zIndex: 10 - index
-            }}
-            initial={{ 
-              rotateX: 60, 
-              rotateZ: -45, 
-              y: index * -20, 
-              x: index * -20,
-              opacity: 0 
-            }}
-            animate={{ 
-              rotateX: 0, 
-              rotateZ: 0, 
-              x: index === 0 ? -200 : index === 1 ? 0 : 200,
-              y: index === 1 ? -50 : 50,
-              opacity: 1
-            }}
-            transition={{ 
-              duration: 1, 
-              delay: 0.5 + index * 0.4,
-              type: "spring",
-              bounce: 0.4
-            }}
-          >
-            {card.text}
-          </motion.div>
-        ))}
-      </div>
+    <div style={{
+      position: 'relative',
+      width: '100%',
+      height: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center',
+      alignItems: 'center',
+      overflow: 'hidden',
+      background: '#0f0c29'
+    }}>
+      {/* Background Media */}
+      {useVideo ? (
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          poster={heroFallback}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            zIndex: 1
+          }}
+          onError={() => setUseVideo(false)}
+        >
+          <source src={heroVideo} type="video/mp4" />
+        </video>
+      ) : (
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            backgroundImage: `url(${heroFallback})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            zIndex: 1
+          }}
+        />
+      )}
 
+      {/* Visual Overlay for readability */}
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        background: 'rgba(15, 12, 41, 0.45)',
+        zIndex: 2
+      }} />
+
+      {/* Hero content overlayed top-middle */}
       <motion.div
-        initial={{ opacity: 0, y: 30 }}
+        initial={{ opacity: 0, y: -30 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 2.5, duration: 0.8 }}
+        transition={{ duration: 1 }}
+        style={{
+          position: 'relative',
+          zIndex: 3,
+          textAlign: 'center',
+          padding: '2rem',
+          maxWidth: '650px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '1.5rem'
+        }}
       >
-        <button className="btn-primary" onClick={onGetStarted}>
+        <h1 style={{
+          fontSize: '3rem',
+          fontWeight: 'bold',
+          color: '#ffffff',
+          textShadow: '0 0 25px rgba(142, 45, 226, 0.7)',
+          margin: 0,
+          letterSpacing: '2px'
+        }}>
+          Lorcana Coach AI
+        </h1>
+        <p style={{
+          fontSize: '1.15rem',
+          color: '#e2e8f0',
+          margin: '0 0 1rem 0',
+          textShadow: '0 2px 4px rgba(0,0,0,0.6)',
+          maxWidth: '500px',
+          lineHeight: '1.6'
+        }}>
+          Enhance your gameplay, eliminate mechanical errors, and master the meta with advanced match reviews.
+        </p>
+
+        {/* Pulsing Glowing Button */}
+        <motion.button
+          onClick={onGetStarted}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          animate={{
+            boxShadow: [
+              "0 0 15px rgba(142, 45, 226, 0.5)",
+              "0 0 30px rgba(142, 45, 226, 0.9)",
+              "0 0 15px rgba(142, 45, 226, 0.5)"
+            ]
+          }}
+          transition={{
+            repeat: Infinity,
+            duration: 2.5,
+            ease: "easeInOut"
+          }}
+          style={{
+            fontSize: '1.25rem',
+            padding: '16px 44px',
+            borderRadius: '50px',
+            border: 'none',
+            color: '#ffffff',
+            background: 'linear-gradient(90deg, #8e2de2, #4a00e0)',
+            cursor: 'pointer',
+            fontWeight: 'bold',
+            boxShadow: '0 0 15px rgba(142, 45, 226, 0.5)'
+          }}
+        >
           Connect Your Account
-        </button>
+        </motion.button>
       </motion.div>
     </div>
   );
