@@ -1,147 +1,101 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React from 'react';
+import { motion } from 'framer-motion';
 import { 
-  Loader2, LogOut, ChevronDown, ChevronUp, Activity, Target, 
-  Shuffle, Shield, Sword, AlertCircle, Clock, TrendingUp, Award
+  LogOut, Target, Cpu, Trophy, BarChart3, Settings, 
+  HelpCircle, Eye, CheckCircle, XCircle
 } from 'lucide-react';
-import CoachAnalysisTabs from './CoachAnalysisTabs';
+import DeckColorBadge from './DeckColorBadge';
 
 const inkColors = {
-  Amber: { name: 'Amber', color: '#ffb300', bg: 'rgba(255,179,0,0.15)', border: 'rgba(255,179,0,0.4)' },
-  Amethyst: { name: 'Amethyst', color: '#ab47bc', bg: 'rgba(171,71,188,0.15)', border: 'rgba(171,71,188,0.4)' },
-  Emerald: { name: 'Emerald', color: '#2ec4b6', bg: 'rgba(46,196,182,0.15)', border: 'rgba(46,196,182,0.4)' },
-  Ruby: { name: 'Ruby', color: '#e71d36', bg: 'rgba(231,29,54,0.15)', border: 'rgba(231,29,54,0.4)' },
-  Sapphire: { name: 'Sapphire', color: '#118ab2', bg: 'rgba(17,138,178,0.15)', border: 'rgba(17,138,178,0.4)' },
-  Steel: { name: 'Steel', color: '#90a4ae', bg: 'rgba(144,164,174,0.15)', border: 'rgba(144,164,174,0.4)' }
+  Amber: { color: '#ffb300', bg: 'rgba(255,179,0,0.12)' },
+  Amethyst: { color: '#ab47bc', bg: 'rgba(171,71,188,0.12)' },
+  Emerald: { color: '#2ec4b6', bg: 'rgba(46,196,182,0.12)' },
+  Ruby: { color: '#e71d36', bg: 'rgba(231,29,54,0.12)' },
+  Sapphire: { color: '#118ab2', bg: 'rgba(17,138,178,0.12)' },
+  Steel: { color: '#90a4ae', bg: 'rgba(144,164,174,0.12)' }
 };
 
-const getDirectiveIcon = (iconName) => {
-  switch (iconName?.toLowerCase()) {
-    case 'shuffle': return <Shuffle size={20} />;
-    case 'shield': return <Shield size={20} />;
-    case 'sword': return <Sword size={20} />;
-    case 'activity': return <Activity size={20} />;
-    case 'target': return <Target size={20} />;
-    default: return <Target size={20} />;
+const renderDiagonalBackground = (colors) => {
+  if (!colors || colors.length === 0) {
+    return <div style={{ background: 'var(--surface-container-highest)', width: '100%', height: '100%' }} />;
   }
+  
+  if (colors.length === 1) {
+    const colName = colors[0].toLowerCase();
+    const colObj = inkColors[colors[0]] || { color: '#8e2de2' };
+    return (
+      <div style={{
+        backgroundImage: `url(/ink-icons/${colName}.png)`,
+        backgroundSize: '120%',
+        backgroundPosition: 'center',
+        width: '100%',
+        height: '100%'
+      }} />
+    );
+  }
+  
+  const col1 = colors[0].toLowerCase();
+  const col2 = colors[1].toLowerCase();
+  const color1Hex = inkColors[colors[0]]?.color || '#00dbe9';
+  const color2Hex = inkColors[colors[1]]?.color || '#7d01b1';
+  
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
+      {/* Left Ink Color Image */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        backgroundImage: `url(/ink-icons/${col1}.png)`,
+        backgroundSize: '120%',
+        backgroundPosition: 'center',
+        clipPath: 'polygon(0 0, 60% 0, 40% 100%, 0 100%)'
+      }} />
+      {/* Right Ink Color Image */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        backgroundImage: `url(/ink-icons/${col2}.png)`,
+        backgroundSize: '120%',
+        backgroundPosition: 'center',
+        clipPath: 'polygon(60% 0, 100% 0, 100% 100%, 40% 100%)'
+      }} />
+      {/* Middle Neon Divider Line */}
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        bottom: 0,
+        left: '50%',
+        width: '2px',
+        background: `linear-gradient(to bottom, ${color1Hex}, ${color2Hex})`,
+        transform: 'translateX(-50%) rotate(16.5deg)',
+        boxShadow: `0 0 12px ${color1Hex}, 0 0 12px ${color2Hex}`,
+        zIndex: 2,
+        opacity: 0.9
+      }} />
+    </div>
+  );
 };
 
-const Dashboard = ({ token, onDisconnect }) => {
-  const [decks, setDecks] = useState([]);
-  const [matches, setMatches] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+const Dashboard = ({ token, onDisconnect, onSelectDeck, onSelectMatch, decks = [], matches = [], loading = false, error = null }) => {
+  const [showAllDecks, setShowAllDecks] = React.useState(false);
+  const [matchPage, setMatchPage] = React.useState(1);
+  const matchesPerPage = 10;
 
-  const [selectedDeck, setSelectedDeck] = useState(null);
-  const [deckAnalysis, setDeckAnalysis] = useState(null);
-  const [loadingAnalysis, setLoadingAnalysis] = useState(false);
-  const [errorAnalysis, setErrorAnalysis] = useState(null);
-
-  const [expandedMatch, setExpandedMatch] = useState(null);
-
-  // Fetch match history and decks on mount
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const [decksRes, matchesRes] = await Promise.all([
-          fetch('/api/decks', { headers: { 'Authorization': `Bearer ${token}` } }),
-          fetch('/api/matches', { headers: { 'Authorization': `Bearer ${token}` } })
-        ]);
-
-        if (!decksRes.ok || !matchesRes.ok) {
-          throw new Error('Failed to retrieve user data from FastAPI backend.');
-        }
-
-        const decksData = await decksRes.json();
-        const matchesData = await matchesRes.json();
-
-        setDecks(decksData);
-        setMatches(matchesData.matches || []);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [token]);
-
-  // Fetch deck analysis when selection changes
-  useEffect(() => {
-    if (!selectedDeck) {
-      setDeckAnalysis(null);
-      return;
-    }
-
-    const fetchAnalysis = async () => {
-      setLoadingAnalysis(true);
-      setErrorAnalysis(null);
-      try {
-        const res = await fetch(`/api/decks/${selectedDeck}/analysis`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!res.ok) {
-          throw new Error(`Failed to load deck analysis (HTTP ${res.status})`);
-        }
-        const data = await res.json();
-        setDeckAnalysis(data);
-      } catch (err) {
-        setErrorAnalysis(err.message);
-      } finally {
-        setLoadingAnalysis(false);
-      }
-    };
-
-    fetchAnalysis();
-  }, [selectedDeck, token]);
-
-  const handleDeckClick = (deckId) => {
-    setSelectedDeck(selectedDeck === deckId ? null : deckId);
+  const calculateGlobalStats = () => {
+    if (!matches || matches.length === 0) return { totalGames: 0, winRate: '0', wins: 0, losses: 0 };
+    const wins = matches.filter(m => m.result?.toLowerCase() === 'win').length;
+    const losses = matches.filter(m => m.result?.toLowerCase() === 'loss').length;
+    const total = matches.length;
+    const wr = total > 0 ? (wins / total * 100).toFixed(0) : '0';
+    return { totalGames: total, winRate: wr, wins, losses };
   };
 
-  const renderColorBadges = (colors) => {
-    if (!colors) return null;
-    return (
-      <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.5rem' }}>
-        {colors.map(col => {
-          const style = inkColors[col] || { color: '#ffffff', bg: 'rgba(255,255,255,0.1)', border: 'rgba(255,255,255,0.2)' };
-          return (
-            <span key={col} style={{
-              fontSize: '0.7rem',
-              padding: '2px 8px',
-              borderRadius: '4px',
-              background: style.bg,
-              border: `1px solid ${style.border}`,
-              color: style.color,
-              fontWeight: 'bold',
-              letterSpacing: '0.5px'
-            }}>
-              {col}
-            </span>
-          );
-        })}
-      </div>
-    );
-  };
-
-  const getFilteredMatches = () => {
-    if (!selectedDeck) return matches;
-    const selected = decks.find(d => d.id === selectedDeck);
-    if (!selected) return matches;
-    return matches.filter(m => {
-      const colorsMatch = m.your_deck_colors === selected.colors.join('/');
-      const formatMatch = selected.format ? (m.format_type === 'infinity' ? 'Infinity' : 'Core') === selected.format : true;
-      return colorsMatch && formatMatch;
-    });
-  };
+  const stats = calculateGlobalStats();
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', color: '#a0aec0' }}>
-        <Loader2 className="animate-spin" size={48} style={{ color: '#b388ff', marginBottom: '1rem' }} />
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', color: 'var(--on-surface-variant)' }}>
+        <Loader2 className="animate-spin" size={48} style={{ color: 'var(--primary-fixed-dim)', marginBottom: '1rem' }} />
         <h3>Gathering match data from Duels.ink...</h3>
       </div>
     );
@@ -149,313 +103,465 @@ const Dashboard = ({ token, onDisconnect }) => {
 
   if (error) {
     return (
-      <div style={{ maxWidth: '600px', margin: '10vh auto', padding: '2rem', textAlign: 'center', background: 'rgba(255,23,68,0.1)', borderRadius: '16px', border: '1px solid rgba(255,23,68,0.2)' }}>
-        <h2 style={{ color: '#ff1744' }}>Connection Failed</h2>
-        <p style={{ color: '#a0aec0', margin: '1rem 0 2rem 0' }}>{error}</p>
-        <button onClick={onDisconnect} style={{ background: '#ff1744', border: 'none', color: 'white', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+      <div style={{ maxWidth: '600px', margin: '15vh auto', padding: '2.5rem', textAlign: 'center', background: 'rgba(255,23,68,0.05)', borderRadius: '16px', border: '1px solid rgba(255,23,68,0.2)' }}>
+        <h2 style={{ color: 'var(--error)', fontFamily: 'var(--font-headline)' }}>Connection Failed</h2>
+        <p style={{ color: 'var(--on-surface-variant)', margin: '1rem 0 2rem 0', lineHeight: 1.6 }}>{error}</p>
+        <button onClick={onDisconnect} className="btn-primary">
           Back to Login
         </button>
       </div>
     );
   }
 
-  const filteredMatches = getFilteredMatches();
-  const selectedDeckObj = decks.find(d => d.id === selectedDeck);
+  // Decks rendering logic
+  const displayedDecks = showAllDecks ? decks : decks.slice(0, 4);
+
+  // Pagination calculations
+  const totalMatchPages = Math.ceil(matches.length / matchesPerPage);
+  const paginatedMatches = matches.slice((matchPage - 1) * matchesPerPage, matchPage * matchesPerPage);
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', minHeight: '100vh' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1.5rem' }}>
-        <div>
-          <h1 style={{ fontSize: '2.2rem', margin: 0, background: '-webkit-linear-gradient(#fff, #a0aec0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            strategic companion tool
+    <div style={{ padding: '0 0 3rem 0', minHeight: '100vh', background: 'var(--obsidian-base)', color: 'var(--on-surface)' }} className="animate-landing">
+      <div className="starfield-bg" />
+
+      {/* Slim Top Bar */}
+      <header style={{
+        width: '100%',
+        background: 'rgba(5, 7, 10, 0.6)',
+        backdropFilter: 'blur(20px)',
+        borderBottom: '1px solid var(--glass-stroke)',
+        padding: '0.75rem 3rem',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        zIndex: 50,
+        position: 'sticky',
+        top: 0
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span className="material-symbols-outlined" style={{ fontVariationSettings: '"FILL" 1', color: 'var(--primary-fixed)', fontSize: '24px' }}>auto_stories</span>
+          <h1 style={{ fontFamily: 'var(--font-headline)', fontSize: '1.25rem', fontWeight: '800', margin: 0, color: 'var(--primary-fixed)', tracking: '-0.02em' }}>
+            The Library
           </h1>
-          <p style={{ margin: '0.25rem 0 0 0', color: '#a0aec0', fontSize: '0.9rem' }}>Illumineer's journal & analysis portal</p>
         </div>
-        <button 
-          onClick={onDisconnect} 
-          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', color: '#a0aec0', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' }}
-        >
-          <LogOut size={16} /> Disconnect
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <button 
+            onClick={onDisconnect}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--on-surface-variant)',
+              cursor: 'pointer',
+              fontSize: '0.85rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontFamily: 'var(--font-technical)'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
+            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--on-surface-variant)'}
+          >
+            <LogOut size={14} /> Disconnect
+          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', borderLeft: '1px solid var(--glass-stroke)', paddingLeft: '16px' }}>
+            <Settings size={18} style={{ color: 'var(--on-surface-variant)', cursor: 'pointer' }} />
+            <img 
+              alt="User Avatar" 
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuAM1h6cU1QWo-AEPoCCjvKDPQhJrIfX8wvTEU-9KKWQReC7Tl3RUcggpNQOlSEf8BaE9BQs_nq24O8XHDAnWA2Iq3c8PSbSYKyS0AqOlLU5EDDeWCtDRaL2Rftq15vcpMRuZ4hZx0tEqf1dBFfMaa7LBbEKP9juX8sxq-zH079EGjJg5Bn1o-sA5Q6gEB7Iqyhwe3GMjNnV3wLIh_1w_zvuapq0g6MXRUH4Q7rbkMezxxC5ms9BQrlBo0-elxV_eYfZpaIGV8TbmtsV"
+              style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid rgba(125, 244, 255, 0.3)' }}
+            />
+          </div>
+        </div>
       </header>
 
-      {/* Decks Grid */}
-      <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem', color: '#cbd5e1' }}>Your Library</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
-        {decks.map(deck => {
-          const isSelected = selectedDeck === deck.id;
-          return (
-            <motion.div 
-              key={deck.id}
-              whileHover={{ y: -5, boxShadow: isSelected ? '0 10px 25px rgba(142, 45, 226, 0.4)' : '0 10px 20px rgba(0,0,0,0.3)' }}
-              onClick={() => handleDeckClick(deck.id)}
-              style={{
-                padding: '1.5rem',
-                background: isSelected ? 'rgba(142, 45, 226, 0.2)' : 'rgba(255,255,255,0.03)',
-                border: isSelected ? '2px solid #8e2de2' : '1px solid rgba(255,255,255,0.08)',
-                borderRadius: '12px',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                position: 'relative',
-                overflow: 'hidden'
-              }}
-            >
-              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.2rem', color: '#f8fafc' }}>{deck.name}</h3>
-              {renderColorBadges(deck.colors)}
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#a0aec0', marginTop: '1.5rem', fontSize: '0.9rem' }}>
-                <span style={{display: 'flex', alignItems: 'center', gap: '0.4rem'}}><Target size={16}/> {deck.winRate} WR</span>
-                <span style={{display: 'flex', alignItems: 'center', gap: '0.4rem'}}><Activity size={16}/> {deck.matches} Matches</span>
-              </div>
-            </motion.div>
-          );
-        })}
-        {decks.length === 0 && (
-          <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '3rem', color: '#a0aec0', background: 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
-            No decks detected in your match history.
+      {/* Main Container */}
+      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '2.5rem 3rem 0 3rem' }}>
+        
+        {/* Title Header Section */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2.5rem' }} className="stagger-item stagger-1">
+          <div>
+            <h2 className="gradient-text" style={{ fontFamily: 'var(--font-headline)', fontSize: '2.5rem', fontWeight: 800, margin: '0 0 8px 0', letterSpacing: '-0.01em' }}>
+              Command Center
+            </h2>
+            <p style={{ margin: 0, color: 'var(--on-surface-variant)', fontSize: '1rem', maxW: '600px', lineHeight: 1.5 }}>
+              Analyze your Lorcana gameplay data, review AI insights, and refine your decks within the Great Illuminary's Library.
+            </p>
           </div>
-        )}
-      </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              background: 'var(--surface-container-high)',
+              border: '1px solid var(--glass-stroke)'
+            }}>
+              <span style={{ 
+                width: '8px', 
+                height: '8px', 
+                background: 'var(--primary-fixed)', 
+                borderRadius: '50%', 
+                boxShadow: '0 0 10px #7df4ff',
+                display: 'inline-block'
+              }} className="animate-pulse" />
+              <span style={{ fontFamily: 'var(--font-technical)', fontSize: '0.75rem', color: 'var(--on-surface)', fontWeight: 500 }}>
+                System Online
+              </span>
+            </div>
+          </div>
+        </div>
 
-      {/* Deck details section */}
-      <AnimatePresence>
-        {selectedDeck && (
-          <motion.div 
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            style={{ overflow: 'hidden', marginBottom: '3rem' }}
-          >
-            <div style={{ background: 'rgba(15, 12, 41, 0.5)', borderRadius: '16px', padding: '2rem', border: '1px solid rgba(142, 45, 226, 0.25)', backdropFilter: 'blur(12px)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
-                <h3 style={{ margin: 0, color: '#f8fafc' }}>Deck Performance: {selectedDeckObj?.name}</h3>
-                <button onClick={() => setSelectedDeck(null)} style={{ background: 'transparent', border: 'none', color: '#a0aec0', cursor: 'pointer', fontSize: '0.9rem' }}>
-                  Close Analysis
+        {/* Performance Bento Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '3rem' }} className="stagger-item stagger-2">
+          
+          {/* Bento Card 1 */}
+          <div className="glass-panel shimmer-effect" style={{ padding: '1.5rem', borderRadius: '16px', display: 'flex', flexDirection: 'column', height: '140px', justifyContent: 'space-between' }}>
+            <p style={{ fontFamily: 'var(--font-technical)', fontSize: '0.7rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '1px', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '14px', color: 'var(--primary-fixed)' }}>swords</span> Total Games
+            </p>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+              <h3 style={{ margin: 0, fontSize: '2.5rem', fontWeight: 800, color: '#fff', fontFamily: 'var(--font-headline)' }}>
+                {stats.totalGames}
+              </h3>
+              <span style={{ fontFamily: 'var(--font-technical)', fontSize: '0.75rem', color: 'var(--primary-fixed)' }}>+12 this week</span>
+            </div>
+          </div>
+
+          {/* Bento Card 2 */}
+          <div className="glass-panel shimmer-effect" style={{ padding: '1.5rem', borderRadius: '16px', display: 'flex', flexDirection: 'column', height: '140px', justifyContent: 'space-between' }}>
+            <p style={{ fontFamily: 'var(--font-technical)', fontSize: '0.7rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '1px', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '14px', color: 'var(--secondary)' }}>emoji_events</span> Win Rate
+            </p>
+            <h3 style={{ margin: 0, fontSize: '2.5rem', fontWeight: 800, color: '#fff', fontFamily: 'var(--font-headline)' }}>
+              {stats.winRate}%
+            </h3>
+            <div style={{ width: '100%', height: '4px', background: 'var(--surface-container-highest)', borderRadius: '2px', overflow: 'hidden' }}>
+              <div style={{ width: `${stats.winRate}%`, height: '100%', background: 'var(--secondary-fixed)', boxShadow: '0 0 10px rgba(246, 217, 255, 0.5)' }} />
+            </div>
+          </div>
+
+          {/* Bento Card 3 */}
+          <div className="glass-panel shimmer-effect" style={{ padding: '1.5rem', borderRadius: '16px', display: 'flex', flexDirection: 'column', height: '140px', justifyContent: 'space-between', borderColor: 'rgba(0,240,255,0.2)' }}>
+            <p style={{ fontFamily: 'var(--font-technical)', fontSize: '0.7rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '1px', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '14px', color: 'var(--primary-fixed-dim)' }}>psychology</span> AI Insights Status
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', width: '100%' }}>
+              <h3 style={{ margin: 0, fontSize: '2.5rem', fontWeight: 800, color: 'var(--primary-fixed-dim)', fontFamily: 'var(--font-headline)' }}>
+                Active
+              </h3>
+              <span style={{ fontSize: '0.75rem', color: 'var(--on-surface-variant)' }}>Sync Complete</span>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Decks Grid Section */}
+        <div style={{ marginBottom: '3.5rem' }} className="stagger-item stagger-3">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <h3 style={{ 
+              fontFamily: 'var(--font-headline)', 
+              fontSize: '1.4rem', 
+              fontWeight: '700',
+              margin: 0, 
+              color: '#ffffff',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span className="material-symbols-outlined" style={{ color: 'var(--secondary)', fontSize: '22px' }}>style</span> Active Deck Collections
+            </h3>
+            {decks.length > 4 && (
+              <button 
+                onClick={() => setShowAllDecks(!showAllDecks)}
+                style={{
+                  background: 'none',
+                  border: '1px solid var(--glass-stroke)',
+                  color: 'var(--primary-fixed-dim)',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                  fontFamily: 'var(--font-technical)',
+                  fontWeight: 600,
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--primary-fixed)'}
+                onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--glass-stroke)'}
+              >
+                {showAllDecks ? 'SHOW LESS' : `SHOW ALL (${decks.length})`}
+              </button>
+            )}
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '1.5rem' }}>
+            {displayedDecks.map(deck => {
+              const subtitle = deck.format === 'Core' ? 'Strategic Tier 1' : 'Economic Dominance';
+              return (
+                <div 
+                  key={deck.id}
+                  className="glass-panel"
+                  style={{
+                    borderRadius: '16px',
+                    overflow: 'hidden',
+                    transition: 'all 0.3s',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    height: '240px',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--ink-magenta)';
+                    e.currentTarget.style.transform = 'translateY(-4px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--glass-stroke)';
+                    e.currentTarget.style.transform = 'none';
+                  }}
+                >
+                  {/* Image blending background */}
+                  <div style={{ height: '140px', width: '100%', position: 'relative' }}>
+                    {renderDiagonalBackground(deck.colors)}
+                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(13, 17, 23, 1) 0%, rgba(13, 17, 23, 0.4) 70%, transparent 100%)' }} />
+                    {/* Format Badge overlay on tile */}
+                    <div style={{
+                      position: 'absolute',
+                      top: '12px',
+                      right: '12px',
+                      background: 'rgba(5, 7, 10, 0.85)',
+                      border: deck.format === 'Core' ? '1px solid rgba(0,240,255,0.4)' : '1px solid rgba(171,71,188,0.4)',
+                      color: deck.format === 'Core' ? 'var(--primary-fixed)' : 'var(--secondary)',
+                      padding: '4px 10px',
+                      borderRadius: '12px',
+                      fontSize: '0.65rem',
+                      fontWeight: 800,
+                      fontFamily: 'var(--font-technical)',
+                      letterSpacing: '0.5px'
+                    }}>
+                      {deck.format?.toUpperCase()}
+                    </div>
+                  </div>
+
+                  {/* Deck content block */}
+                  <div style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'space-between' }}>
+                    <div>
+                      <span style={{ fontFamily: 'var(--font-technical)', fontSize: '0.65rem', color: 'var(--ink-magenta)', textTransform: 'uppercase', letterSpacing: '0.2em', display: 'block', marginBottom: '2px' }}>
+                        {subtitle}
+                      </span>
+                      <h4 style={{ margin: 0, fontFamily: 'var(--font-headline)', fontSize: '1.25rem', color: 'var(--primary-fixed)', fontWeight: 700 }}>
+                        {deck.name.split(' (')[0]}
+                      </h4>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', gap: '20px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontFamily: 'var(--font-technical)', fontSize: '0.6rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Win Rate</span>
+                          <span style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--primary-container)', fontFamily: 'var(--font-headline)', marginTop: '2px' }}>{deck.winRate}</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontFamily: 'var(--font-technical)', fontSize: '0.6rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Games</span>
+                          <span style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--on-surface)', fontFamily: 'var(--font-headline)', marginTop: '2px' }}>{deck.matches}</span>
+                        </div>
+                      </div>
+
+                      <button 
+                        onClick={() => onSelectDeck(deck.id)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '8px 16px',
+                          borderRadius: '30px',
+                          background: 'rgba(0, 240, 255, 0.08)',
+                          border: '1px solid rgba(0, 240, 255, 0.4)',
+                          color: 'var(--primary-fixed)',
+                          cursor: 'pointer',
+                          fontSize: '0.75rem',
+                          fontWeight: 'bold',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                          boxShadow: '0 0 10px rgba(0, 240, 255, 0.1)',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'rgba(0, 240, 255, 0.18)';
+                          e.currentTarget.style.boxShadow = '0 0 15px rgba(0, 240, 255, 0.3)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'rgba(0, 240, 255, 0.08)';
+                          e.currentTarget.style.boxShadow = '0 0 10px rgba(0, 240, 255, 0.1)';
+                        }}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: '16px', fontVariationSettings: '"FILL" 1' }}>psychology</span> Coach Analysis
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Tabular Match History section */}
+        <div style={{ marginBottom: '4rem' }} className="stagger-item stagger-4">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <h3 style={{ 
+              fontFamily: 'var(--font-headline)', 
+              fontSize: '1.4rem', 
+              fontWeight: '700',
+              margin: 0, 
+              color: '#ffffff',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span className="material-symbols-outlined" style={{ color: 'var(--primary-fixed)', fontSize: '22px' }}>history</span> Recent Match History
+            </h3>
+            {totalMatchPages > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  disabled={matchPage === 1}
+                  onClick={() => setMatchPage(matchPage - 1)}
+                  style={{
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid var(--glass-stroke)',
+                    color: matchPage === 1 ? 'rgba(255,255,255,0.1)' : 'var(--primary-fixed-dim)',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    cursor: matchPage === 1 ? 'not-allowed' : 'pointer',
+                    fontSize: '0.75rem',
+                    fontWeight: 600
+                  }}
+                >
+                  PREV
+                </button>
+                <span style={{ fontFamily: 'var(--font-technical)', fontSize: '0.8rem', color: 'var(--on-surface-variant)' }}>
+                  Page {matchPage} of {totalMatchPages}
+                </span>
+                <button
+                  disabled={matchPage === totalMatchPages}
+                  onClick={() => setMatchPage(matchPage + 1)}
+                  style={{
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid var(--glass-stroke)',
+                    color: matchPage === totalMatchPages ? 'rgba(255,255,255,0.1)' : 'var(--primary-fixed-dim)',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    cursor: matchPage === totalMatchPages ? 'not-allowed' : 'pointer',
+                    fontSize: '0.75rem',
+                    fontWeight: 600
+                  }}
+                >
+                  NEXT
                 </button>
               </div>
-
-              {loadingAnalysis ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem', color: '#a0aec0' }}>
-                  <Loader2 className="animate-spin" size={32} style={{ color: '#b388ff', marginBottom: '1rem' }} />
-                  <span>Coach is compiling deck statistics...</span>
-                </div>
-              ) : errorAnalysis ? (
-                <div style={{ color: '#ff1744', padding: '1.5rem', background: 'rgba(255,23,68,0.05)', borderRadius: '8px', border: '1px solid rgba(255,23,68,0.1)' }}>
-                  Error compiling analysis: {errorAnalysis}
-                </div>
-              ) : deckAnalysis?.status === 'need_more_data' ? (
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', padding: '1.5rem', background: 'rgba(179,136,255,0.1)', borderRadius: '12px', border: '1px solid rgba(179,136,255,0.2)' }}>
-                  <AlertCircle size={36} style={{ color: '#b388ff', flexShrink: 0 }} />
-                  <div>
-                    <h4 style={{ margin: '0 0 4px 0', color: '#e8eaf6' }}>Study in Progress</h4>
-                    <p style={{ margin: 0, color: '#cbd5e1', fontSize: '0.9rem', lineHeight: '1.5' }}>
-                      Not enough games logged with <strong>{selectedDeckObj?.name}</strong>. Play at least 3 games on Duels.ink with this deck so the Coach can analyze your playstyle. (Currently: {deckAnalysis.match_count} games).
-                    </p>
-                  </div>
-                </div>
-              ) : deckAnalysis ? (
-                <div>
-                  {/* Strategic Tags */}
-                  <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-                    {deckAnalysis.tags?.map(tag => (
-                      <span key={tag} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#cbd5e1', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600 }}>
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-                    {/* Performance Metrics Card */}
-                    <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                      <h4 style={{ marginTop: 0, marginBottom: '1rem', color: '#b388ff', fontSize: '1.1rem' }}>Performance Metrics</h4>
-                      
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                        <div>
-                          <div style={{ fontSize: '0.8rem', color: '#a0aec0' }}>Personal Win Rate</div>
-                          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#00e676', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                            {deckAnalysis.metrics?.personal_win_rate}
-                            <span style={{ fontSize: '0.75rem', color: '#cbd5e1', fontWeight: 'normal' }}>
-                              ({deckAnalysis.metrics?.win_rate_delta} delta)
-                            </span>
-                          </div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: '0.8rem', color: '#a0aec0' }}>Metagame Win Rate</div>
-                          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#cbd5e1' }}>{deckAnalysis.metrics?.meta_win_rate}</div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: '0.8rem', color: '#a0aec0' }}>Avg Match Duration</div>
-                          <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#e2e8f0', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}><Clock size={16}/> {deckAnalysis.metrics?.avg_match_duration}</div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: '0.8rem', color: '#a0aec0' }}>Ink Efficiency (Turns 1-5)</div>
-                          <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#e2e8f0', marginTop: '4px' }}>
-                            {deckAnalysis.metrics?.ink_efficiency?.label}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Win Condition Timeline (Progress Bars) */}
-                      <h5 style={{ margin: '1.5rem 0 0.5rem 0', color: '#a0aec0', fontSize: '0.9rem' }}>Win-Condition Timeline</h5>
-                      {deckAnalysis.win_condition_timeline && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                          {Object.entries(deckAnalysis.win_condition_timeline).map(([key, val]) => (
-                            <div key={key}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#cbd5e1', marginBottom: '4px' }}>
-                                <span>{val.label}</span>
-                                <span>{val.percentage}%</span>
-                              </div>
-                              <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
-                                <div style={{
-                                  width: `${val.percentage}%`,
-                                  height: '100%',
-                                  background: key === 'early' ? '#00e676' : key === 'mid' ? '#2979ff' : '#8e2de2',
-                                  borderRadius: '3px'
-                                }}></div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Meta Positioning Card */}
-                    <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column' }}>
-                      <h4 style={{ marginTop: 0, marginBottom: '1rem', color: '#b388ff', fontSize: '1.1rem' }}>Meta Positioning</h4>
-                      <p style={{ color: '#cbd5e1', fontSize: '0.95rem', lineHeight: '1.6', margin: 0, flex: 1 }}>
-                        {deckAnalysis.meta_performance_breakdown}
-                      </p>
-                      
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(142,45,226,0.1)', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid rgba(142,45,226,0.2)', marginTop: '1.5rem' }}>
-                        <Award size={20} style={{ color: '#b388ff', flexShrink: 0 }} />
-                        <span style={{ fontSize: '0.85rem', color: '#cbd5e1' }}>Pacing Profile: <strong>{deckAnalysis.metrics?.pacing_label}</strong></span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Coaching Directives */}
-                  <h4 style={{ margin: '0 0 1rem 0', color: '#cbd5e1', fontSize: '1.2rem' }}>Tactical Coaching Directives</h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
-                    {deckAnalysis.coaching_directives?.map((dir, i) => (
-                      <div key={i} style={{ display: 'flex', gap: '1rem', background: 'rgba(255,255,255,0.02)', padding: '1.25rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.04)' }}>
-                        <div style={{ background: 'rgba(142,45,226,0.15)', color: '#b388ff', padding: '10px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', height: 'fit-content' }}>
-                          {getDirectiveIcon(dir.icon)}
-                        </div>
-                        <div>
-                          <strong style={{ color: '#a0aec0', fontSize: '0.8rem', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>{dir.type}</strong>
-                          <p style={{ margin: 0, color: '#cbd5e1', fontSize: '0.9rem', lineHeight: '1.5' }}>{dir.instruction}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Match History */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <h2 style={{ fontSize: '1.5rem', margin: 0, color: '#cbd5e1' }}>
-          {selectedDeck ? `Recent Matches: ${selectedDeckObj?.name}` : 'Recent Matches (All Decks)'}
-        </h2>
-        {selectedDeck && (
-          <button 
-            onClick={() => setSelectedDeck(null)}
-            style={{ background: 'transparent', border: 'none', color: '#b388ff', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600 }}
-          >
-            Clear Deck Filter
-          </button>
-        )}
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        {filteredMatches.map(match => {
-          const isWin = match.result?.toLowerCase() === 'win';
-          const isExpanded = expandedMatch === match.game_id;
-          
-          return (
-            <div key={match.game_id} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-              <div 
-                onClick={() => setExpandedMatch(isExpanded ? null : match.game_id)}
-                style={{ padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', flexWrap: 'wrap', gap: '1rem' }}
-              >
-                <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <span style={{ 
-                    color: isWin ? '#00e676' : '#ff1744', 
-                    background: isWin ? 'rgba(0,230,118,0.1)' : 'rgba(255,23,68,0.1)', 
-                    padding: '4px 12px', 
-                    borderRadius: '20px', 
-                    fontSize: '0.85rem', 
-                    fontWeight: 'bold',
-                    textTransform: 'uppercase'
-                  }}>
-                    {isWin ? 'Win' : 'Loss'}
-                  </span>
-                  <div>
-                    <span style={{ color: '#e2e8f0', fontWeight: 'bold' }}>vs {match.opp_display_name}</span>
-                    <div style={{ fontSize: '0.75rem', color: '#a0aec0', marginTop: '2px' }}>
-                      Opponent: {match.opp_deck_colors || 'Unknown deck'} • Format: {match.format_type?.toUpperCase()}
-                    </div>
-                  </div>
-                </div>
-                
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                  <div style={{ textAlign: 'right', fontSize: '0.85rem', color: '#a0aec0', display: 'none', sm: 'block' }}>
-                    <div>{match.turns} Turns</div>
-                    <div style={{ fontSize: '0.7rem', marginTop: '2px' }}>
-                      {match.your_deck_colors}
-                    </div>
-                  </div>
-                  
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setExpandedMatch(isExpanded ? null : match.game_id);
-                    }}
-                    style={{ 
-                      background: 'rgba(142, 45, 226, 0.1)', 
-                      border: '1px solid #8e2de2', 
-                      color: 'white', 
-                      padding: '8px 16px', 
-                      borderRadius: '6px', 
-                      cursor: 'pointer', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '0.5rem',
-                      fontSize: '0.85rem',
-                      fontWeight: 600,
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    Coach Analysis {isExpanded ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
-                  </button>
-                </div>
-              </div>
-              
-              <AnimatePresence>
-                {isExpanded && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    style={{ overflow: 'hidden' }}
-                  >
-                    <div style={{ padding: '0 1.5rem 1.5rem 1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                      <CoachAnalysisTabs gameId={match.game_id} token={token} />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          );
-        })}
-        {filteredMatches.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '3rem', color: '#a0aec0', background: 'rgba(255,255,255,0.01)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.03)' }}>
-            No matches found for this selection.
+            )}
           </div>
-        )}
-      </div>
+
+          <div className="glass-panel" style={{ borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--glass-stroke)', position: 'relative', boxShadow: '0 12px 40px rgba(0,0,0,0.6)' }}>
+            <div style={{ height: '1.5px', background: 'linear-gradient(90deg, transparent, var(--primary-fixed), transparent)', opacity: 0.5 }} />
+            
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '700px' }}>
+                <thead>
+                  <tr style={{ background: 'rgba(35, 43, 44, 0.3)', borderBottom: '1px solid var(--glass-stroke)' }}>
+                    <th style={{ padding: '1rem', fontFamily: 'var(--font-technical)', fontSize: '0.7rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Deck Name</th>
+                    <th style={{ padding: '1rem', fontFamily: 'var(--font-technical)', fontSize: '0.7rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Opponent Archetype</th>
+                    <th style={{ padding: '1rem', fontFamily: 'var(--font-technical)', fontSize: '0.7rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Result</th>
+                    <th style={{ padding: '1rem', fontFamily: 'var(--font-technical)', fontSize: '0.7rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Turn Count</th>
+                    <th style={{ padding: '1rem', fontFamily: 'var(--font-technical)', fontSize: '0.7rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600, textAlign: 'right' }}>Coach Analysis</th>
+                  </tr>
+                </thead>
+                <tbody style={{ fontSize: '0.85rem' }}>
+                  {paginatedMatches.map((match, idx) => {
+                    const isWin = match.result?.toLowerCase() === 'win';
+                    const activeColor = inkColors[match.your_deck_colors?.split('/')[0]]?.color || '#00dbe9';
+                    
+                    return (
+                      <tr 
+                        key={match.game_id} 
+                        style={{ borderBottom: idx !== paginatedMatches.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none', transition: 'background-color 0.2s' }}
+                        className="match-history-row"
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.02)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        <td style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{ 
+                            width: '8px', 
+                            height: '8px', 
+                            background: activeColor, 
+                            borderRadius: '50%',
+                            display: 'inline-block',
+                            boxShadow: `0 0 8px ${activeColor}`
+                          }} />
+                          <strong style={{ color: '#fff', fontWeight: 600 }}>{match.your_deck_colors}</strong>
+                        </td>
+                        <td style={{ padding: '1rem', color: 'var(--on-surface-variant)' }}>
+                          {match.opp_deck_colors} ({match.opp_display_name})
+                        </td>
+                        <td style={{ padding: '1rem' }}>
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                            fontSize: '0.65rem',
+                            fontWeight: 'bold',
+                            fontFamily: 'var(--font-technical)',
+                            background: isWin ? 'rgba(0, 240, 255, 0.08)' : 'rgba(255, 45, 85, 0.08)',
+                            color: isWin ? 'var(--primary-fixed-dim)' : 'var(--ink-magenta)',
+                            border: isWin ? '1px solid rgba(0, 240, 255, 0.15)' : '1px solid rgba(255, 45, 85, 0.15)'
+                          }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>
+                              {isWin ? 'check_circle' : 'cancel'}
+                            </span>
+                            {isWin ? 'WIN' : 'LOSS'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '1rem', color: 'var(--on-surface-variant)', fontFamily: 'var(--font-technical)' }}>
+                          Turn {match.turns}
+                        </td>
+                        <td style={{ padding: '1rem', textAlign: 'right' }}>
+                          <button
+                            onClick={() => onSelectMatch(match.game_id)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: '8px',
+                              borderRadius: '8px',
+                              background: 'var(--surface-container)',
+                              border: '1px solid var(--glass-stroke)',
+                              color: 'var(--primary-fixed)',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.borderColor = 'var(--primary-fixed)';
+                              e.currentTarget.style.background = 'rgba(0,240,255,0.1)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.borderColor = 'var(--glass-stroke)';
+                              e.currentTarget.style.background = 'var(--surface-container)';
+                            }}
+                          >
+                            <Eye size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+        </div>
+
+      </main>
     </div>
   );
 };

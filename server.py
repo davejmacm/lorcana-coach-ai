@@ -62,6 +62,90 @@ app = FastAPI(
 # Simple in-memory cache:  token → player_id
 _player_id_cache: dict[str, str] = {}
 
+# Load Lorcana Cards Database
+CARDS_DB = {}
+try:
+    cards_path = os.path.join(PROJECT_ROOT, "lorcana_cards.json")
+    if os.path.exists(cards_path):
+        with open(cards_path, "r", encoding="utf-8") as f:
+            CARDS_DB = json.load(f)
+        logger.info("Loaded %d Lorcana cards from database.", len(CARDS_DB))
+    else:
+        logger.warning("lorcana_cards.json not found in project root.")
+except Exception as e:
+    logger.error("Failed to load lorcana_cards.json: %s", e)
+
+
+def find_card_by_name(name: str) -> dict | None:
+    if not name:
+        return None
+    name_lower = name.strip().lower()
+    
+    # Try exact match first
+    for cid, card in CARDS_DB.items():
+        if card.get("name", "").strip().lower() == name_lower:
+            return {"id": cid, **card}
+            
+    # Substring matching fallback
+    for cid, card in CARDS_DB.items():
+        cname = card.get("name", "").strip().lower()
+        if name_lower in cname or cname in name_lower:
+            return {"id": cid, **card}
+            
+    return None
+
+
+def enrich_card_list(cards: list) -> list:
+    """Enrich a list of card summaries with cost, ink, and digital image URL from CARDS_DB."""
+    enriched = []
+    for card in cards:
+        if isinstance(card, str):
+            # Parse string formatted like "**Captain Hook - Forceful Duelist** (1-174) ..."
+            name = None
+            cid = None
+            if "**" in card:
+                parts = card.split("**")
+                if len(parts) >= 3:
+                    name = parts[1].strip()
+            
+            # Extract set ID from parentheses, e.g. (1-174)
+            import re
+            match = re.search(r'\(([^)]+)\)', card)
+            if match:
+                cid = match.group(1).strip()
+            
+            card = {"name": name, "id": cid}
+
+        if not isinstance(card, dict):
+            continue
+        cid = card.get("id")
+        name = card.get("name")
+        image_url = None
+        cost = card.get("cost")
+        ink = None
+        
+        if cid and cid in CARDS_DB:
+            card_info = CARDS_DB[cid]
+            image_url = card_info.get("image_uris", {}).get("digital", {}).get("normal")
+            cost = card_info.get("cost", cost)
+            ink = card_info.get("ink")
+        elif name:
+            card_info = find_card_by_name(name)
+            if card_info:
+                cid = card_info.get("id")
+                image_url = card_info.get("image_uris", {}).get("digital", {}).get("normal")
+                cost = card_info.get("cost", cost)
+                ink = card_info.get("ink")
+                
+        enriched.append({
+            "name": name,
+            "id": cid,
+            "cost": cost,
+            "ink": ink,
+            "image_url": image_url
+        })
+    return enriched
+
 
 def get_player_id(token: str) -> str:
     """Resolve a Duels.ink bearer token to the player's unique ID.
@@ -338,7 +422,9 @@ async def deck_analysis(deck_id: str, auth: Tuple[str, str] = Depends(get_auth))
         if os.path.exists(cached_analysis_path):
             try:
                 with open(cached_analysis_path, "r", encoding="utf-8") as f:
-                    return JSONResponse(content=json.load(f))
+                    cached_data = json.load(f)
+                    if "key_synergies" in cached_data and "top_improvement" in cached_data:
+                        return JSONResponse(content=cached_data)
             except Exception as read_exc:
                 logger.warning("Failed to read cached analysis file: %s", read_exc)
 
@@ -389,10 +475,41 @@ async def deck_analysis(deck_id: str, auth: Tuple[str, str] = Depends(get_auth))
         else:
             ink_rating = "Low"
 
+        # Resolve key synergies card details with set IDs and AVIF URLs
+        synergies_raw = enrichment.get("key_synergies", [])
+        enriched_synergies = []
+        for syn in synergies_raw:
+            cards_raw = syn.get("cards", [])
+            resolved_cards = []
+            for name in cards_raw:
+                card_info = find_card_by_name(name)
+                if card_info:
+                    resolved_cards.append({
+                        "name": card_info.get("name", name),
+                        "id": card_info.get("id"),
+                        "image_url": card_info.get("image_uris", {}).get("digital", {}).get("normal"),
+                        "cost": card_info.get("cost"),
+                        "ink": card_info.get("ink")
+                    })
+                else:
+                    resolved_cards.append({
+                        "name": name,
+                        "id": None,
+                        "image_url": None,
+                        "cost": None,
+                        "ink": None
+                    })
+            enriched_synergies.append({
+                "title": syn.get("title", "Synergy Combo"),
+                "description": syn.get("description", ""),
+                "cards": resolved_cards
+            })
+
         payload = {
             "deck_id": deck_id,
             "deck_name": f"{deck_colors} ({deck_format.capitalize()})" if deck_format else deck_colors,
             "tags": enrichment.get("tags", []),
+            "top_improvement": enrichment.get("top_improvement", "Increase early game consistency."),
             "metrics": {
                 "personal_win_rate": f"{snapshot['win_rate'] * 100:.1f}%",
                 "meta_win_rate": enrichment.get("meta_win_rate", "50.0%"),
@@ -407,6 +524,7 @@ async def deck_analysis(deck_id: str, auth: Tuple[str, str] = Depends(get_auth))
             },
             "meta_performance_breakdown": enrichment.get("meta_performance_breakdown", ""),
             "coaching_directives": enrichment.get("coaching_directives", []),
+            "key_synergies": enriched_synergies,
             "win_condition_timeline": {
                 "early": { "label": "Early (Turns 1-6)", "percentage": early_pct },
                 "mid": { "label": "Mid (Turns 7-10)", "percentage": mid_pct },
@@ -433,6 +551,16 @@ async def deck_analysis(deck_id: str, auth: Tuple[str, str] = Depends(get_auth))
         ) from exc
 
 
+def enrich_mulligan_payload(payload: dict) -> dict:
+    """Ensure all card references in mulligan analysis are fully enriched with details & image URLs."""
+    if "mulligan_analysis" in payload and "cards_details" in payload["mulligan_analysis"]:
+        details = payload["mulligan_analysis"]["cards_details"]
+        for key in ["initial_hand", "mulliganed", "drawn"]:
+            if key in details and isinstance(details[key], list):
+                details[key] = enrich_card_list(details[key])
+    return payload
+
+
 @app.get("/api/matches/{game_id}/coaching")
 async def match_coaching(game_id: str, auth: Tuple[str, str] = Depends(get_auth)):
     """Return coaching analysis for a single game.
@@ -456,7 +584,44 @@ async def match_coaching(game_id: str, auth: Tuple[str, str] = Depends(get_auth)
             if "mulligan_analysis" in payload and "execution_rating" not in payload["mulligan_analysis"]:
                 payload["mulligan_analysis"]["execution_rating"] = "Optimal"
                 
+            # If timeline is missing or we need to ensure the correct player is loaded
+            if "timeline" not in payload or "your_deck_colors" not in payload.get("match_metadata", {}) or payload.get("match_metadata", {}).get("opponent_name") == "Opponent":
+                summary_path = os.path.join(cached_dir, f"{game_id}_summary.json")
+                timeline_path = os.path.join(cached_dir, f"{game_id}_timeline.md")
+                if os.path.exists(summary_path) and os.path.exists(timeline_path):
+                    with open(summary_path, "r", encoding="utf-8") as sf:
+                        summary = json.load(sf)
+                    with open(timeline_path, "r", encoding="utf-8") as tf:
+                        timeline = tf.read()
+                    
+                    payload["timeline"] = timeline
+                    
+                    # Fix player 1/2 bug retroactively
+                    your_player_num = summary.get("match_metadata", {}).get("your_player", 1)
+                    player_key = f"player_{your_player_num}"
+                    player_data = summary.get("players", {}).get(player_key, {})
+                    initial_hand = player_data.get("initial_hand", [])
+                    mulligan_data = player_data.get("mulligan", {})
+                    mulliganed = mulligan_data.get("mulliganed", [])
+                    drawn = mulligan_data.get("drawn", [])
+                    
+                    if "mulligan_analysis" in payload:
+                        payload["mulligan_analysis"]["cards_details"] = {
+                            "initial_hand": initial_hand,
+                            "mulliganed": mulliganed,
+                            "drawn": drawn
+                        }
+                    
+                    if "match_metadata" in payload:
+                        payload["match_metadata"]["your_deck_colors"] = summary.get("match_metadata", {}).get("your_deck_colors", "")
+                        payload["match_metadata"]["went_first"] = summary.get("match_metadata", {}).get("went_first", True)
+                    
+                    # Re-cache updated version
+                    with open(review_path, "w", encoding="utf-8") as fh_out:
+                        json.dump(payload, fh_out, indent=2)
+
             payload["cached"] = True
+            payload = enrich_mulligan_payload(payload)
             return JSONResponse(content=payload)
         except Exception as exc:
             logger.warning("Failed to read cached review for %s: %s", game_id, exc)
@@ -489,7 +654,9 @@ async def match_coaching(game_id: str, auth: Tuple[str, str] = Depends(get_auth)
         ) from exc
 
     # ------ 4. Extract Mulligan Details Deterministically ------
-    player_data = summary.get("players", {}).get("player_1", {})
+    your_player_num = summary.get("match_metadata", {}).get("your_player", 1)
+    player_key = f"player_{your_player_num}"
+    player_data = summary.get("players", {}).get(player_key, {})
     initial_hand = player_data.get("initial_hand", [])
     mulligan_data = player_data.get("mulligan", {})
     mulliganed = mulligan_data.get("mulliganed", [])
@@ -511,13 +678,16 @@ async def match_coaching(game_id: str, auth: Tuple[str, str] = Depends(get_auth)
     # Build final structured response
     payload = {
         "game_id": game_id,
+        "timeline": timeline,
         "match_metadata": {
             "opponent_name": summary.get("match_metadata", {}).get("opp_display_name", "Opponent"),
             "result": "Victory" if summary.get("match_metadata", {}).get("result") == "win" else "Defeat",
             "turns": summary.get("match_metadata", {}).get("turns", 0),
             "deck_win_rate": deck_win_rate,
             "opponent_colors": summary.get("match_metadata", {}).get("opp_deck_colors", ""),
-            "opponent_archetype": coaching.get("opponent_archetype", "Unknown Archetype")
+            "opponent_archetype": coaching.get("opponent_archetype", "Unknown Archetype"),
+            "your_deck_colors": summary.get("match_metadata", {}).get("your_deck_colors", ""),
+            "went_first": summary.get("match_metadata", {}).get("went_first", True)
         },
         "mulligan_analysis": {
             "execution_rating": coaching.get("mulligan_execution", "Optimal"),
@@ -540,6 +710,9 @@ async def match_coaching(game_id: str, auth: Tuple[str, str] = Depends(get_auth)
         "cached": False,
         "token_usage": coaching.get("token_usage", {})
     }
+
+    # Enrich mulligan cards with actual detail maps & URLs
+    payload = enrich_mulligan_payload(payload)
 
     # Save to cache
     try:

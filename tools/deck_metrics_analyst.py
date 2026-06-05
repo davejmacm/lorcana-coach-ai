@@ -56,6 +56,11 @@ Your task is to enrich the personal snapshot with high-quality strategic advice.
    - "type": category (e.g. "Early Game Adjustment", "Pivot Moment", "Inkwell Habit")
    - "icon": one of: "shuffle", "activity", "target", "shield", "sword"
    - "instruction": A concise 1-sentence tactical tip recommending specific cards or play patterns.
+5. "top_improvement": A string representing the single most critical or highest-impact strategic tip for this deck's improvement (e.g., "Increase 1-drop consistency").
+6. "key_synergies": A list of exactly 2 key synergy pairs. Each synergy pair must be a dictionary containing:
+   - "title": A brief, thematic title for the synergy (e.g. "Insightful Analysis Loop").
+   - "description": A short explanation of why these two cards are synergistic.
+   - "cards": A list of exactly 2 card names from the player's deck or common cards in this color archetype that form this synergy.
 
 Return ONLY a raw JSON object matching the schema. No markdown block wrapping, no ```json, just the pure JSON.
 """
@@ -97,6 +102,7 @@ def _get_fallback_enrichment(snapshot: dict) -> dict:
         "tags": ["Tempo", "Ramp", "Midrange"] if "Sapphire" in deck_colors or "Steel" in deck_colors else ["Control", "Draw", "Late Game"],
         "meta_win_rate": "54.2%",
         "meta_performance_breakdown": f"Your {deck_colors} deck is showing steady performance. It has favorable matchups against slower control decks, but requires disciplined early game ink management against aggressive setups.",
+        "top_improvement": "Increase early game questing pressure to contest aggressive decks.",
         "coaching_directives": [
             {
                 "type": "Early Game Adjustment",
@@ -112,6 +118,18 @@ def _get_fallback_enrichment(snapshot: dict) -> dict:
                 "type": "Matchup Pivot",
                 "icon": "shield",
                 "instruction": "Against Amber-heavy boards, prioritize challenging opponent characters to disrupt their singer setup."
+            }
+        ],
+        "key_synergies": [
+            {
+                "title": "Tactical Coordination",
+                "description": "Combining early-game questing with combat disruption shifts the pacing index favorably.",
+                "cards": ["Palace Guard", "Dale - Ready for his Shot"]
+            },
+            {
+                "title": "Insightful Analysis Loop",
+                "description": "Combining card drawing effects with passive questing secures late game inevitability.",
+                "cards": ["Gameplay Analysis", "Gain Powerful Insight"]
             }
         ]
     }
