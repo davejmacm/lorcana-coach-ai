@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 const inkColors = {
   Amber: { name: 'Amber', color: '#ffb300', bg: 'rgba(255,179,0,0.15)', border: 'rgba(255,179,0,0.4)', text: 'A' },

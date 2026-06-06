@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import {
   Loader2, CornerDownRight, TrendingUp, Cpu,
-  HelpCircle, ArrowLeft, ChevronRight, User, AlertCircle,
-  Sparkles, CheckCircle2, XCircle, ArrowRight, Zap, Play, Clock, Award,
+  ArrowLeft, ChevronRight, AlertCircle,
+  Sparkles, Zap, Clock, Award,
   ChevronDown, ChevronUp
 } from 'lucide-react';
 
@@ -157,9 +157,9 @@ const MulliganCard = ({ card, onClick, discarded }) => {
 };
 
 const ZoomedCardModal = ({ card, onClose }) => {
+  const [imgError, setImgError] = useState(false);
   if (!card) return null;
   const colorStyle = inkColors[card.ink] || { color: '#00dbe9' };
-  const [imgError, setImgError] = useState(false);
 
   return createPortal(
     <div style={{
@@ -308,16 +308,9 @@ const CoachAnalysisTabs = ({ gameId, token, onBack }) => {
   if (!data) return null;
 
   const { mulligan_analysis, pivot_turn, takeaways, match_metadata, timeline } = data;
-
-  // Derive keepers: initial hand minus mulliganed cards
   const initialHand = mulligan_analysis?.cards_details?.initial_hand || [];
   const mulliganed = mulligan_analysis?.cards_details?.mulliganed || [];
   const drawn = mulligan_analysis?.cards_details?.drawn || [];
-
-  const keepers = initialHand.filter(card => {
-    const isMulliganed = mulliganed.some(m => m.name === card.name || (m.id && m.id === card.id));
-    return !isMulliganed;
-  });
 
   // Match initial hand cards to their discarded status and replacements
   const remainingMulliganed = [...mulliganed];
@@ -343,7 +336,6 @@ const CoachAnalysisTabs = ({ gameId, token, onBack }) => {
 
   // Extract deck colors and player went first state
   const playedDeckPrimaryColor = match_metadata?.your_deck_colors?.split('/')[0]?.toLowerCase();
-  const playedDeckSecondaryColor = match_metadata?.your_deck_colors?.split('/')[1]?.toLowerCase();
 
   // Helper to streamline the timeline to setup, turns 1 & 2, pivot turn, and final turn.
   const getStreamlinedTimeline = (timelineMd, pivotRound, totalTurns) => {
@@ -913,7 +905,7 @@ const CoachAnalysisTabs = ({ gameId, token, onBack }) => {
                   border: '1px solid'
                 };
 
-                let dotBg = 'var(--outline-variant)';
+                let dotBg;
                 let dotGlow = 'none';
                 let itemBorderColor = 'var(--glass-stroke)';
                 let itemBg = 'transparent';

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const SignUp = ({ onRegister, onNavigateToLogin, onShowHelp, loading, error, setError }) => {
@@ -7,21 +7,15 @@ const SignUp = ({ onRegister, onNavigateToLogin, onShowHelp, loading, error, set
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [token, setToken] = useState('');
-  const [particles, setParticles] = useState([]);
-
-  // Generate particles on mount
-  useEffect(() => {
-    const generated = Array.from({ length: 30 }).map((_, idx) => ({
-      id: idx,
-      size: Math.random() * 3 + 1,
-      left: `${Math.random() * 100}%`,
-      top: `${Math.random() * 100}%`,
-      delay: Math.random() * 10,
-      duration: Math.random() * 10 + 5,
-      isMagenta: Math.random() > 0.8
-    }));
-    setParticles(generated);
-  }, []);
+  const [particles] = useState(() => Array.from({ length: 30 }).map((_, idx) => ({
+    id: idx,
+    size: Math.random() * 3 + 1,
+    left: `${Math.random() * 100}%`,
+    top: `${Math.random() * 100}%`,
+    delay: Math.random() * 10,
+    duration: Math.random() * 10 + 5,
+    isMagenta: Math.random() > 0.8
+  })));
 
   const handleNext = (e) => {
     e.preventDefault();

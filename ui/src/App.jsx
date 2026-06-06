@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import Hero from './components/Hero';
 import TokenModal from './components/TokenModal';
@@ -25,10 +25,7 @@ function App() {
 
   // Fetch match history and decks when token is set/changed
   useEffect(() => {
-    if (!token) {
-      setView('landing');
-      return;
-    }
+    if (!token) return;
 
     const fetchData = async () => {
       setLoadingData(true);
@@ -101,7 +98,7 @@ function App() {
     }
   };
 
-  const handleLoginSubmit = (newToken, email) => {
+  const handleLoginSubmit = (newToken) => {
     localStorage.setItem('duels_ink_token', newToken);
     setToken(newToken);
     setView('dashboard');

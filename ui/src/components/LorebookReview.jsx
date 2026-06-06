@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   BookOpen, TrendingUp, Clock, Sparkles, Cpu, Layers,
-  ArrowRight, ChevronRight, AlertCircle, CheckCircle2,
-  XCircle, ArrowLeft, Loader2, Award, ExternalLink, ChartNoAxesCombined, Droplet
+  ArrowRight, ChevronRight, AlertCircle,
+  ArrowLeft, Loader2, Award, ChartNoAxesCombined, Droplet
 } from 'lucide-react';
-import DeckColorBadge from './DeckColorBadge';
 
 const inkColors = {
   Amber: { color: '#ffb300', bg: 'rgba(255,179,0,0.15)' },
@@ -115,8 +114,6 @@ const LorebookReview = ({ deckId, decks = [], token, onSelectDeck, onBackToDashb
   const [activeZoomedCardKey, setActiveZoomedCardKey] = useState(null);
 
   const activeDeck = decks.find(d => d.id === deckId);
-  const primaryColorName = activeDeck?.colors?.[0]?.toLowerCase();
-  const secondaryColorName = activeDeck?.colors?.[1]?.toLowerCase();
 
   useEffect(() => {
     if (!deckId) return;

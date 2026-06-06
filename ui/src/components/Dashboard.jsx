@@ -1,10 +1,7 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import {
-  LogOut, Target, Cpu, Trophy, BarChart3, Settings,
-  HelpCircle, Eye, CheckCircle, XCircle, Loader2
+  LogOut, Settings, Eye, Loader2
 } from 'lucide-react';
-import DeckColorBadge from './DeckColorBadge';
 
 const inkColors = {
   Amber: { color: '#ffb300', bg: 'rgba(255,179,0,0.12)' },
@@ -22,7 +19,6 @@ const renderDiagonalBackground = (colors) => {
 
   if (colors.length === 1) {
     const colName = colors[0].toLowerCase();
-    const colObj = inkColors[colors[0]] || { color: '#8e2de2' };
     return (
       <div style={{
         backgroundImage: `url(/ink-icons/${colName}.png)`,
@@ -76,11 +72,17 @@ const renderDiagonalBackground = (colors) => {
   );
 };
 
-const Dashboard = ({ token, onDisconnect, onSelectDeck, onSelectMatch, decks = [], matches = [], loading = false, error = null }) => {
+const Dashboard = ({ onDisconnect, onSelectDeck, onSelectMatch, decks = [], matches = [], loading = false, error = null }) => {
   const [showAllDecks, setShowAllDecks] = React.useState(false);
   const [formatFilter, setFormatFilter] = React.useState('ALL'); // 'ALL' | 'CORE' | 'INFINITY'
   const [matchPage, setMatchPage] = React.useState(1);
   const matchesPerPage = 10;
+
+  // Decks rendering logic
+  const filteredDecks = React.useMemo(() => {
+    if (formatFilter === 'ALL') return decks;
+    return decks.filter(deck => deck.format?.toUpperCase() === formatFilter);
+  }, [decks, formatFilter]);
 
   const calculateGlobalStats = () => {
     if (!matches || matches.length === 0) return { totalGames: 0, winRate: '0', wins: 0, losses: 0 };
@@ -113,12 +115,6 @@ const Dashboard = ({ token, onDisconnect, onSelectDeck, onSelectMatch, decks = [
       </div>
     );
   }
-
-  // Decks rendering logic
-  const filteredDecks = React.useMemo(() => {
-    if (formatFilter === 'ALL') return decks;
-    return decks.filter(deck => deck.format?.toUpperCase() === formatFilter);
-  }, [decks, formatFilter]);
 
   const displayedDecks = showAllDecks ? filteredDecks : filteredDecks.slice(0, 4);
 
