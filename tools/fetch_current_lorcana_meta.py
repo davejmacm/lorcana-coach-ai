@@ -9,7 +9,25 @@ def fetch_current_lorcana_meta() -> str:
         A JSON string containing the top deck archetypes, their metashare,
         win rates, tiers, and core cards.
     """
-    print("[Tool] Running fetch_current_lorcana_meta...")
+    import os
+    import time
+    
+    PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    cache_dir = os.path.join(PROJECT_ROOT, "cached_analyses")
+    cache_path = os.path.join(cache_dir, "metagame_cache.json")
+    
+    # 12-hour TTL cache check (43200 seconds)
+    try:
+        if os.path.exists(cache_path):
+            mtime = os.path.getmtime(cache_path)
+            if time.time() - mtime < 43200:
+                print("[Tool] Loading metagame data from local cache...")
+                with open(cache_path, "r", encoding="utf-8") as cf:
+                    return cf.read()
+    except Exception as e:
+        print(f"[Tool] Warning: Metagame cache read failed: {e}")
+
+    print("[Tool] Running fetch_current_lorcana_meta scraper...")
     url = "https://inkdecks.com/lorcana-metagame"
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -110,10 +128,20 @@ def fetch_current_lorcana_meta() -> str:
                 "core_cards": unique_core_cards[:4]
             })
             
-        return json.dumps({
+        result_json = json.dumps({
             "metagame": "Winterspell Metagame (Set 11)",
             "top_archetypes": archetypes
         }, indent=2)
+        
+        # Save to cache
+        try:
+            os.makedirs(cache_dir, exist_ok=True)
+            with open(cache_path, "w", encoding="utf-8") as cf:
+                cf.write(result_json)
+        except Exception as e:
+            print(f"[Tool] Warning: Metagame cache write failed: {e}")
+            
+        return result_json
         
     except Exception as e:
         return json.dumps({"error": "Exception occurred during scraping: {}".format(str(e))})

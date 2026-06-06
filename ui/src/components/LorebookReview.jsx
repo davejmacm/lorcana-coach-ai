@@ -106,12 +106,43 @@ const ZoomedCardModal = ({ activeKey, keySynergies, onClose }) => {
   );
 };
 
-const LorebookReview = ({ deckId, decks = [], token, onSelectDeck, onBackToDashboard, onSelectMatch, matches = [] }) => {
+const LorebookReview = ({ 
+  deckId, decks = [], token, onSelectDeck, onBackToDashboard, onSelectMatch, matches = [],
+  rateLimitType = 'none', cooldownTime = 0
+}) => {
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [hoveredCardKey, setHoveredCardKey] = useState(null);
   const [activeZoomedCardKey, setActiveZoomedCardKey] = useState(null);
+  const [activeTrendTab, setActiveTrendTab] = useState('mulligan');
+
+  const getSystemBadge = () => {
+    if (rateLimitType === 'rpm') {
+      return {
+        dotBg: '#ffe179',
+        glow: '0 0 10px #ffe179',
+        text: `Inkwells Cooling (Quota Paused) (${cooldownTime}s)`,
+        border: '1px solid rgba(245, 158, 11, 0.4)'
+      };
+    } else if (rateLimitType === 'rpd') {
+      return {
+        dotBg: '#ab47bc',
+        glow: '0 0 10px #ab47bc',
+        text: 'Ink Depleted for the Day',
+        border: '1px solid rgba(171, 71, 188, 0.4)'
+      };
+    } else {
+      return {
+        dotBg: 'var(--primary-fixed)',
+        glow: '0 0 10px #7df4ff',
+        text: 'System Online',
+        border: '1px solid var(--glass-stroke)'
+      };
+    }
+  };
+
+  const badgeInfo = getSystemBadge();
 
   const activeDeck = decks.find(d => d.id === deckId);
 
@@ -303,17 +334,39 @@ const LorebookReview = ({ deckId, decks = [], token, onSelectDeck, onBackToDashb
 
           {/* Heading block */}
 
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.9rem' }}>
+            <h2 style={{
+              fontFamily: 'var(--font-headline)',
+              fontSize: '2.2rem',
+              fontWeight: 800,
+              margin: 0,
+              color: '#ffffff'
+            }}>
+              The Lorebook <span style={{ color: 'var(--primary-fixed-dim)', fontWeight: 300 }}>Review</span>
+            </h2>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              background: 'var(--surface-container-high)',
+              border: badgeInfo.border
+            }}>
+              <span style={{
+                width: '8px',
+                height: '8px',
+                background: badgeInfo.dotBg,
+                borderRadius: '50%',
+                boxShadow: badgeInfo.glow,
+                display: 'inline-block'
+              }} className="animate-pulse" />
+              <span style={{ fontFamily: 'var(--font-technical)', fontSize: '0.75rem', color: 'var(--on-surface)', fontWeight: 500 }}>
+                {badgeInfo.text}
+              </span>
+            </div>
+          </div>
 
-          <h2 style={{
-            fontFamily: 'var(--font-headline)',
-            fontSize: '2.2rem',
-            fontWeight: 800,
-            margin: 0,
-            marginBottom: '0.9rem',
-            color: '#ffffff'
-          }}>
-            The Lorebook <span style={{ color: 'var(--primary-fixed-dim)', fontWeight: 300 }}>Review</span>
-          </h2>
           <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
             <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: '1.5rem', flexWrap: 'wrap', gap: '0.1rem' }}>
 
@@ -783,6 +836,256 @@ const LorebookReview = ({ deckId, decks = [], token, onSelectDeck, onBackToDashb
                     </div>
                   </section>
 
+                  {/* Matchup Trends & Insights */}
+                  {analysis?.rate_limit_exceeded || rateLimitType !== 'none' ? (
+                    <section className="glass-panel" style={{ 
+                      padding: '2.5rem', 
+                      borderRadius: '16px', 
+                      border: (rateLimitType === 'rpd' || analysis?.daily_limit_exceeded) ? '1px solid rgba(171, 71, 188, 0.4)' : '1px solid rgba(245, 158, 11, 0.4)', 
+                      background: 'rgba(5, 7, 10, 0.6)',
+                      textAlign: 'center',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '1rem'
+                    }}>
+                      <div style={{
+                        width: '64px',
+                        height: '64px',
+                        borderRadius: '50%',
+                        background: (rateLimitType === 'rpd' || analysis?.daily_limit_exceeded) ? 'rgba(171, 71, 188, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                        color: (rateLimitType === 'rpd' || analysis?.daily_limit_exceeded) ? '#ab47bc' : '#ffe179',
+                        border: (rateLimitType === 'rpd' || analysis?.daily_limit_exceeded) ? '1px solid rgba(171, 71, 188, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '32px',
+                        boxShadow: (rateLimitType === 'rpd' || analysis?.daily_limit_exceeded) ? '0 0 20px rgba(171, 71, 188, 0.2)' : '0 0 20px rgba(245, 158, 11, 0.2)'
+                      }} className="animate-pulse">
+                        🔮
+                      </div>
+                      <h3 style={{
+                        fontFamily: 'var(--font-headline)',
+                        fontSize: '1.4rem',
+                        fontWeight: 800,
+                        margin: '10px 0 0 0',
+                        color: '#ffffff'
+                      }}>
+                        The Inkwells are Cooling
+                      </h3>
+                      <p style={{
+                        maxWidth: '500px',
+                        margin: 0,
+                        fontSize: '0.95rem',
+                        lineHeight: 1.6,
+                        color: 'var(--on-surface-variant)'
+                      }}>
+                        The Great Illuminary has temporarily run low on magical ink. The archives are recharging—please wait a brief moment before exploring further match reviews.
+                      </p>
+                    </section>
+                  ) : (
+                    <section className="glass-panel" style={{ padding: '2rem', borderRadius: '16px', border: '1px solid var(--glass-stroke)' }}>
+                      <h3 style={{
+                        margin: '0 0 1.5rem 0',
+                        fontSize: '1.25rem',
+                        fontFamily: 'var(--font-headline)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        color: '#ffffff'
+                      }}>
+                        <TrendingUp size={20} style={{ color: 'var(--primary-fixed-dim)' }} /> Matchup Trends & Insights
+                      </h3>
+
+                      {/* Tab Switcher */}
+                      <div style={{ display: 'flex', gap: '12px', borderBottom: '1px solid var(--outline-variant)', paddingBottom: '12px', marginBottom: '1.5rem' }}>
+                        <button
+                          onClick={() => setActiveTrendTab('mulligan')}
+                          style={{
+                            background: activeTrendTab === 'mulligan' ? 'rgba(0, 240, 255, 0.08)' : 'transparent',
+                            border: activeTrendTab === 'mulligan' ? '1px solid rgba(0, 240, 255, 0.3)' : '1px solid transparent',
+                            borderRadius: '8px',
+                            color: activeTrendTab === 'mulligan' ? 'var(--primary-fixed-dim)' : 'var(--on-surface-variant)',
+                            padding: '8px 16px',
+                            fontSize: '0.85rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            fontFamily: 'var(--font-technical)',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          Mulligan Patterns
+                        </button>
+                        <button
+                          onClick={() => setActiveTrendTab('pivot')}
+                          style={{
+                            background: activeTrendTab === 'pivot' ? 'rgba(0, 240, 255, 0.08)' : 'transparent',
+                            border: activeTrendTab === 'pivot' ? '1px solid rgba(0, 240, 255, 0.3)' : '1px solid transparent',
+                            borderRadius: '8px',
+                            color: activeTrendTab === 'pivot' ? 'var(--primary-fixed-dim)' : 'var(--on-surface-variant)',
+                            padding: '8px 16px',
+                            fontSize: '0.85rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            fontFamily: 'var(--font-technical)',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          Momentum Swing Cards
+                        </button>
+                      </div>
+
+                      {/* Tab 1: Mulligan Patterns */}
+                      {activeTrendTab === 'mulligan' && (
+                        <div>
+                          {(!analysis.mulligan_insights || analysis.mulligan_insights.length === 0) ? (
+                            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--on-surface-variant)', border: '1px dashed var(--outline-variant)', borderRadius: '12px' }}>
+                              Insufficient games parsed to generate mulligan correlation patterns. Keep playing matches with this deck! (Min. 5 games total, 3 occurrences per card)
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                              {analysis.mulligan_insights.map((ins, idx) => {
+                                const recBadgeStyle = {
+                                  fontSize: '0.7rem',
+                                  fontWeight: 800,
+                                  padding: '4px 10px',
+                                  borderRadius: '12px',
+                                  textTransform: 'uppercase',
+                                  border: '1px solid',
+                                };
+
+                                let badgeColorStyle;
+                                if (ins.recommendation?.toLowerCase() === 'keep') {
+                                  badgeColorStyle = {
+                                    background: 'rgba(0, 240, 255, 0.1)',
+                                    color: 'var(--primary-fixed-dim)',
+                                    borderColor: 'rgba(0, 240, 255, 0.3)',
+                                    boxShadow: '0 0 10px rgba(0, 240, 255, 0.15)'
+                                  };
+                                } else if (ins.recommendation?.toLowerCase() === 'toss') {
+                                  badgeColorStyle = {
+                                    background: 'rgba(255, 45, 85, 0.1)',
+                                    color: 'var(--ink-magenta)',
+                                    borderColor: 'rgba(255, 45, 85, 0.3)',
+                                    boxShadow: '0 0 10px rgba(255, 45, 85, 0.15)'
+                                  };
+                                } else {
+                                  badgeColorStyle = {
+                                    background: 'rgba(245, 158, 11, 0.1)',
+                                    color: '#ffe179',
+                                    borderColor: 'rgba(245, 158, 11, 0.3)',
+                                    boxShadow: '0 0 10px rgba(245, 158, 11, 0.15)'
+                                  };
+                                }
+
+                                return (
+                                  <div key={idx} style={{
+                                    padding: '1.25rem',
+                                    borderRadius: '10px',
+                                    background: 'rgba(255,255,255,0.01)',
+                                    border: '1px solid var(--outline-variant)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '10px'
+                                  }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                                      <strong style={{ color: '#fff', fontSize: '0.95rem' }}>{ins.card_name}</strong>
+                                      <span style={{ ...recBadgeStyle, ...badgeColorStyle }}>
+                                        {ins.recommendation}
+                                      </span>
+                                    </div>
+                                    
+                                    {/* Multi-rate sliders */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', margin: '6px 0' }}>
+                                      <div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '4px', color: 'var(--on-surface-variant)' }}>
+                                          <span>Kept Win Rate</span>
+                                          <span style={{ color: 'var(--primary-fixed-dim)', fontWeight: 'bold' }}>{ins.keep_win_rate || 'N/A'}</span>
+                                        </div>
+                                        <div style={{ height: '5px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
+                                          <div style={{ height: '100%', width: ins.keep_win_rate || '0%', background: 'var(--primary-fixed-dim)' }} />
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '4px', color: 'var(--on-surface-variant)' }}>
+                                          <span>Tossed Win Rate</span>
+                                          <span style={{ color: 'var(--ink-magenta)', fontWeight: 'bold' }}>{ins.toss_win_rate || 'N/A'}</span>
+                                        </div>
+                                        <div style={{ height: '5px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
+                                          <div style={{ height: '100%', width: ins.toss_win_rate || '0%', background: 'var(--ink-magenta)' }} />
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--on-surface-variant)', lineHeight: 1.4, fontStyle: 'italic' }}>
+                                      "{ins.coaching_note}"
+                                    </p>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Tab 2: Repeating Pivot Cards */}
+                      {activeTrendTab === 'pivot' && (
+                        <div>
+                          {(!analysis.pivot_insights || analysis.pivot_insights.length === 0) ? (
+                            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--on-surface-variant)', border: '1px dashed var(--outline-variant)', borderRadius: '12px' }}>
+                              No recurring momentum swing cards detected in your defeats yet. Keep analyzing games!
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                              {analysis.pivot_insights.map((ins, idx) => (
+                                <div key={idx} style={{
+                                  padding: '1.25rem',
+                                  borderRadius: '10px',
+                                  background: 'rgba(255, 45, 85, 0.02)',
+                                  border: '1px solid rgba(255, 45, 85, 0.15)',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '8px',
+                                  position: 'relative',
+                                  overflow: 'hidden'
+                                }}>
+                                  <div style={{
+                                    position: 'absolute',
+                                    left: 0,
+                                    top: 0,
+                                    bottom: 0,
+                                    width: '3.5px',
+                                    background: 'var(--ink-magenta)'
+                                  }} />
+                                  
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                                    <strong style={{ color: '#fff', fontSize: '0.95rem' }}>{ins.card_name}</strong>
+                                    <span style={{
+                                      fontSize: '0.7rem',
+                                      fontWeight: 800,
+                                      padding: '4px 10px',
+                                      borderRadius: '12px',
+                                      textTransform: 'uppercase',
+                                      background: 'rgba(255, 45, 85, 0.1)',
+                                      color: 'var(--ink-magenta)',
+                                      border: '1px solid rgba(255, 45, 85, 0.25)'
+                                    }}>
+                                      Pivot in {ins.momentum_loss_count} losses ({ins.percentage_of_losses})
+                                    </span>
+                                  </div>
+                                  <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--on-surface-variant)', lineHeight: 1.4 }}>
+                                    {ins.coaching_note}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </section>
+                  )}
+
                 </div>
 
                 {/* Right: Directives & Timeline (Span 4) */}
@@ -913,6 +1216,7 @@ const LorebookReview = ({ deckId, decks = [], token, onSelectDeck, onBackToDashb
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {deckMatches.map(m => {
                     const isWin = m.result?.toLowerCase() === 'win';
+                    const isLocked = rateLimitType !== 'none';
                     return (
                       <div
                         key={m.game_id}
@@ -924,7 +1228,9 @@ const LorebookReview = ({ deckId, decks = [], token, onSelectDeck, onBackToDashb
                           alignItems: 'center',
                           justifyContent: 'space-between',
                           flexWrap: 'wrap',
-                          gap: '1rem'
+                          gap: '1rem',
+                          opacity: isLocked ? 0.5 : 1,
+                          pointerEvents: isLocked ? 'none' : 'auto'
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>

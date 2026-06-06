@@ -44,6 +44,21 @@ def _parse_inked_card(entry):
     return {"name": str(entry), "id": "", "turn": None}
 
 
+def _clean_card_name(card_str: str) -> str:
+    """Extract card name from string formatted with markdown stars and details.
+    Example: "**Lilo - Bundled Up** (11-195) [Uninkable, Cost 2]" -> "Lilo - Bundled Up"
+    """
+    if not card_str:
+        return ""
+    if "**" in card_str:
+        parts = card_str.split("**")
+        if len(parts) >= 3:
+            return parts[1].strip()
+    # Fallback to stripping parentheses/brackets
+    name = card_str.split("(")[0].strip()
+    return name.replace("**", "").strip()
+
+
 def _get_player_data(summary: dict) -> dict | None:
     """Return the player data dict that corresponds to 'your_player'.
 
@@ -177,6 +192,11 @@ def generate_deck_snapshot(deck_colors: str, player_id: str = None, deck_format:
 
     matchup_records: dict[str, dict[str, int]] = defaultdict(lambda: {"wins": 0, "losses": 0})
 
+    # ---- Initialize Matchup Trend Engine structures ----
+    mulligan_stats = defaultdict(lambda: {"kept_wins": 0, "kept_losses": 0, "tossed_wins": 0, "tossed_losses": 0})
+    pivot_losses_counter = Counter()
+    deck_card_names = set()
+
     for idx, summary in enumerate(matches):
         meta = summary["match_metadata"]
         result = meta.get("result", "").lower()
@@ -205,6 +225,66 @@ def generate_deck_snapshot(deck_colors: str, player_id: str = None, deck_format:
         player_data = _get_player_data(summary)
         if player_data is None:
             continue
+
+        # Collect card names from this game to build deck card set
+        game_cards = set()
+        for card in player_data.get("cards_played", []):
+            name = card.get("name")
+            if name:
+                game_cards.add(name)
+                deck_card_names.add(name)
+        for entry in player_data.get("cards_inked", []):
+            parsed = _parse_inked_card(entry)
+            name = parsed.get("name")
+            if name:
+                game_cards.add(name)
+                deck_card_names.add(name)
+
+        # 1. Mulligan Patterns Tracking
+        initial_hand = player_data.get("initial_hand", [])
+        mulligan_data = player_data.get("mulligan", {})
+        mulliganed = mulligan_data.get("mulliganed", [])
+
+        # Clean names
+        clean_initial = [_clean_card_name(c) for c in initial_hand if c]
+        clean_mulliganed = [_clean_card_name(c) for c in mulliganed if c]
+
+        for card_name in clean_initial:
+            if not card_name:
+                continue
+            is_tossed = card_name in clean_mulliganed
+            if is_tossed:
+                clean_mulliganed.remove(card_name)
+                if is_win:
+                    mulligan_stats[card_name]["tossed_wins"] += 1
+                else:
+                    mulligan_stats[card_name]["tossed_losses"] += 1
+            else:
+                if is_win:
+                    mulligan_stats[card_name]["kept_wins"] += 1
+                else:
+                    mulligan_stats[card_name]["kept_losses"] += 1
+
+        # 2. Pivot Cards Tracking in Losses
+        if not is_win:
+            game_id = summary.get("game_id")
+            if game_id:
+                review_path = os.path.join(analyses_dir, f"{game_id}_coach_review.json")
+                if os.path.exists(review_path):
+                    try:
+                        with open(review_path, "r", encoding="utf-8") as rf:
+                            review_data = json.load(rf)
+                        pivot_turn = review_data.get("pivot_turn", {})
+                        your_actions = pivot_turn.get("your_actions", "")
+                        momentum_shift = pivot_turn.get("momentum_shift", "")
+                        pivot_text = (your_actions + " " + momentum_shift).lower()
+
+                        for c_name in game_cards:
+                            short_name = c_name.split(" - ")[0].strip().lower()
+                            if short_name and short_name in pivot_text:
+                                pivot_losses_counter[c_name] += 1
+                    except Exception as e:
+                        print(f"[Snapshot] Warning: Failed to parse review {game_id} for pivot tracking: {e}")
 
         # Cards played
         cards_played = player_data.get("cards_played", [])
@@ -268,6 +348,45 @@ def generate_deck_snapshot(deck_colors: str, player_id: str = None, deck_format:
         reverse=True,
     )
 
+    # ---- Compute Mulligan Patterns and Pivot Cards ----
+    if match_count < 5:
+        mulligan_trends = {"status": "insufficient_data", "trends": []}
+        pivot_insights_data = {"status": "insufficient_data", "cards": []}
+    else:
+        # compute mulligan trends
+        trends_list = []
+        for name, stats in mulligan_stats.items():
+            kept_count = stats["kept_wins"] + stats["kept_losses"]
+            tossed_count = stats["tossed_wins"] + stats["tossed_losses"]
+            appeared = kept_count + tossed_count
+            if appeared >= 3:
+                keep_wr = round(stats["kept_wins"] / kept_count, 4) if kept_count > 0 else None
+                toss_wr = round(stats["tossed_wins"] / tossed_count, 4) if tossed_count > 0 else None
+                
+                trends_list.append({
+                    "card_name": name,
+                    "appeared": appeared,
+                    "kept_count": kept_count,
+                    "tossed_count": tossed_count,
+                    "keep_win_rate": keep_wr,
+                    "toss_win_rate": toss_wr
+                })
+        # Sort by appearance count descending
+        trends_list.sort(key=lambda x: x["appeared"], reverse=True)
+        mulligan_trends = {"status": "success", "trends": trends_list}
+        
+        # compute pivot cards
+        pivot_cards_list = []
+        for name, count in pivot_losses_counter.items():
+            pivot_cards_list.append({
+                "card_name": name,
+                "pivot_losses_count": count,
+                "percentage_of_losses": f"{count / losses * 100:.0f}%" if losses > 0 else "0%"
+            })
+        # Sort by pivot loss count descending
+        pivot_cards_list.sort(key=lambda x: x["pivot_losses_count"], reverse=True)
+        pivot_insights_data = {"status": "success", "cards": pivot_cards_list}
+
     # ---- Build snapshot dict ----
     deck_id = deck_colors.lower().replace("/", "-")
     if deck_format:
@@ -285,6 +404,8 @@ def generate_deck_snapshot(deck_colors: str, player_id: str = None, deck_format:
         "frequent_cards_played": frequent_played,
         "frequent_cards_inked": frequent_inked,
         "matchup_records": dict(matchup_records),
+        "mulligan_trends": mulligan_trends,
+        "pivot_cards": pivot_insights_data,
     }
 
     # ---- Persist to disk ----

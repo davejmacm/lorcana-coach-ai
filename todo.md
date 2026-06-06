@@ -43,15 +43,15 @@ This living document outlines outstanding refinements, architectural updates, an
 - [ ] Update readme for UI
 
 ### 🌐 API
-- [ ] Implement fastAPI layer
+- [x] Implement fastAPI layer
 - [ ] Decide on how to handle 'aggregated improvements' with token efficiency in mind
-- [ ] Data structure to UI
+- [x] Data structure to UI
 - [ ] Update readme for API
 
 ### 🧠 Advanced Coaching & Analytics
-- [ ] **Matchup Trend Engines:**
-  - [ ] Analyze mulligan patterns over multiple games to highlight opening hands that correlate with higher win rates vs. loss rates.
-  - [ ] Track repeating pivot cards (cards whose play or banishment consistently marks a loss of momentum).
+- [x] **Matchup Trend Engines:**
+  - [x] Analyze mulligan patterns over multiple games to highlight opening hands that correlate with higher win rates vs. loss rates.
+  - [x] Track repeating pivot cards (cards whose play or banishment consistently marks a loss of momentum).
 
 ---
 

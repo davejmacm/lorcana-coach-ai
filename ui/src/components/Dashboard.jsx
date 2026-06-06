@@ -72,11 +72,41 @@ const renderDiagonalBackground = (colors) => {
   );
 };
 
-const Dashboard = ({ onDisconnect, onSelectDeck, onSelectMatch, decks = [], matches = [], loading = false, error = null }) => {
+const Dashboard = ({ 
+  onDisconnect, onSelectDeck, onSelectMatch, decks = [], matches = [], 
+  loading = false, error = null, rateLimitType = 'none', cooldownTime = 0 
+}) => {
   const [showAllDecks, setShowAllDecks] = React.useState(false);
   const [formatFilter, setFormatFilter] = React.useState('ALL'); // 'ALL' | 'CORE' | 'INFINITY'
   const [matchPage, setMatchPage] = React.useState(1);
   const matchesPerPage = 10;
+
+  const getSystemBadge = () => {
+    if (rateLimitType === 'rpm') {
+      return {
+        dotBg: '#ffe179',
+        glow: '0 0 10px #ffe179',
+        text: `Inkwells Cooling (Quota Paused) (${cooldownTime}s)`,
+        border: '1px solid rgba(245, 158, 11, 0.4)'
+      };
+    } else if (rateLimitType === 'rpd') {
+      return {
+        dotBg: '#ab47bc',
+        glow: '0 0 10px #ab47bc',
+        text: 'Ink Depleted for the Day',
+        border: '1px solid rgba(171, 71, 188, 0.4)'
+      };
+    } else {
+      return {
+        dotBg: 'var(--primary-fixed)',
+        glow: '0 0 10px #7df4ff',
+        text: 'System Online',
+        border: '1px solid var(--glass-stroke)'
+      };
+    }
+  };
+
+  const badgeInfo = getSystemBadge();
 
   // Decks rendering logic
   const filteredDecks = React.useMemo(() => {
@@ -197,18 +227,18 @@ const Dashboard = ({ onDisconnect, onSelectDeck, onSelectMatch, decks = [], matc
               padding: '8px 16px',
               borderRadius: '8px',
               background: 'var(--surface-container-high)',
-              border: '1px solid var(--glass-stroke)'
+              border: badgeInfo.border
             }}>
               <span style={{
                 width: '8px',
                 height: '8px',
-                background: 'var(--primary-fixed)',
+                background: badgeInfo.dotBg,
                 borderRadius: '50%',
-                boxShadow: '0 0 10px #7df4ff',
+                boxShadow: badgeInfo.glow,
                 display: 'inline-block'
               }} className="animate-pulse" />
               <span style={{ fontFamily: 'var(--font-technical)', fontSize: '0.75rem', color: 'var(--on-surface)', fontWeight: 500 }}>
-                System Online
+                {badgeInfo.text}
               </span>
             </div>
           </div>
@@ -543,13 +573,19 @@ const Dashboard = ({ onDisconnect, onSelectDeck, onSelectMatch, decks = [], matc
                     const isWin = match.result?.toLowerCase() === 'win';
                     const activeColor = inkColors[match.your_deck_colors?.split('/')[0]]?.color || '#00dbe9';
 
+                    const isLocked = rateLimitType !== 'none';
                     return (
                       <tr
                         key={match.game_id}
-                        style={{ borderBottom: idx !== paginatedMatches.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none', transition: 'background-color 0.2s' }}
+                        style={{ 
+                          borderBottom: idx !== paginatedMatches.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none', 
+                          transition: 'background-color 0.2s',
+                          opacity: isLocked ? 0.5 : 1,
+                          pointerEvents: isLocked ? 'none' : 'auto'
+                        }}
                         className="match-history-row"
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.02)'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        onMouseEnter={(e) => !isLocked && (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.02)')}
+                        onMouseLeave={(e) => !isLocked && (e.currentTarget.style.backgroundColor = 'transparent')}
                       >
                         <td style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
                           <span style={{

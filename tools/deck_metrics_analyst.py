@@ -1,6 +1,8 @@
 import os
 import json
 import sys
+from pydantic import BaseModel, Field
+from typing import List
 from google import genai
 from google.genai import types
 
@@ -10,6 +12,44 @@ sys.path.insert(0, PROJECT_ROOT)
 
 from tools.fetch_current_lorcana_meta import fetch_current_lorcana_meta
 
+# =====================================================================
+# 1. Define strict Pydantic Schemas for Deck Enrichment API
+# =====================================================================
+
+class CoachingDirective(BaseModel):
+    type: str = Field(description="Category (e.g. 'Early Game Adjustment', 'Pivot Moment', 'Inkwell Habit')")
+    icon: str = Field(description="One of: 'shuffle', 'activity', 'target', 'shield', 'sword'")
+    instruction: str = Field(description="A concise 1-sentence tactical tip recommending specific cards or play patterns.")
+
+class SynergyPair(BaseModel):
+    title: str = Field(description="A brief, thematic title for the synergy")
+    description: str = Field(description="A short explanation of why these two cards are synergistic.")
+    cards: List[str] = Field(description="List of exactly 2 card names from the player's deck or common cards in this color archetype forming this synergy.")
+
+class MulliganInsight(BaseModel):
+    card_name: str = Field(description="The card name")
+    keep_win_rate: str = Field(description="Win rate when kept, e.g. '62.5%' or 'N/A' if never kept")
+    toss_win_rate: str = Field(description="Win rate when tossed, e.g. '40.0%' or 'N/A' if never tossed")
+    recommendation: str = Field(description="Must be exactly one of: 'Keep', 'Toss', or 'Neutral'")
+    coaching_note: str = Field(description="A concise 1-sentence strategic tip explaining why keeping or tossing correlates with wins in matchups.")
+
+class PivotInsight(BaseModel):
+    card_name: str = Field(description="The card name")
+    momentum_loss_count: int = Field(description="Integer count of times this card appeared on pivot turns in losses")
+    percentage_of_losses: str = Field(description="Percentage representation of pivot loss occurrences, e.g. '40%'")
+    coaching_note: str = Field(description="A concise 1-sentence strategic tip on how to play around this momentum loss risk.")
+
+class DeckEnrichmentSchema(BaseModel):
+    tags: List[str] = Field(description="List of 2 or 3 strategic tags defining the deck style (e.g. ['Control', 'Late Game'])")
+    meta_win_rate: str = Field(description="Archetype win rate in competitive meta, e.g. '53.4%'")
+    meta_performance_breakdown: str = Field(description="Professional 2-3 sentence summary of matchup in competitive meta.")
+    coaching_directives: List[CoachingDirective] = Field(description="List of exactly 3 actionable improvements.")
+    top_improvement: str = Field(description="The single most critical strategic tip for deck improvement.")
+    key_synergies: List[SynergyPair] = Field(description="List of exactly 2 key synergy pairs.")
+    mulligan_insights: List[MulliganInsight] = Field(description="Enriched mulligan trends, or empty list if insufficient data.")
+    pivot_insights: List[PivotInsight] = Field(description="Enriched pivot cards, or empty list if insufficient data.")
+
+
 def get_deck_analysis_enrichment(snapshot: dict) -> dict:
     """Uses Gemini 2.5 Flash to generate strategic tags, positioning analysis, and coaching directives.
 
@@ -17,11 +57,7 @@ def get_deck_analysis_enrichment(snapshot: dict) -> dict:
         snapshot: The pre-computed deck snapshot dictionary.
 
     Returns:
-        A dictionary containing:
-          - tags: list of strings
-          - meta_win_rate: string (e.g. '53.2%')
-          - meta_performance_breakdown: string
-          - coaching_directives: list of dicts with keys 'type', 'icon', 'instruction'
+        A dictionary containing enriched deck analysis.
     """
     # Initialize genai client
     api_key = os.environ.get("GEMINI_API_KEY")
@@ -48,27 +84,21 @@ Personal Deck Snapshot:
 Current Lorcana Metagame:
 {json.dumps(meta_data, indent=2)}
 
-Your task is to enrich the personal snapshot with high-quality strategic advice. You MUST return a JSON object with the following fields:
-1. "tags": A list of 2 or 3 strategic tags defining the deck style (e.g., ["Control", "Draw", "Late Game"], ["Aggro", "Rush"], ["Midrange", "Tempo"]).
-2. "meta_win_rate": A string representing the average win rate of this archetype in the current competitive meta (e.g., "53.4%"). Use the metagame data to estimate this color pair's average win rate, or estimate based on common tiers.
-3. "meta_performance_breakdown": A professional, encouraging, yet highly strategic 2-3 sentence summary of how this deck combination matches up against the current metagame.
-4. "coaching_directives": A list of exactly 3 actionable improvements the player should make. Each must be a dictionary containing:
-   - "type": category (e.g. "Early Game Adjustment", "Pivot Moment", "Inkwell Habit")
-   - "icon": one of: "shuffle", "activity", "target", "shield", "sword"
-   - "instruction": A concise 1-sentence tactical tip recommending specific cards or play patterns.
-5. "top_improvement": A string representing the single most critical or highest-impact strategic tip for this deck's improvement (e.g., "Increase 1-drop consistency").
-6. "key_synergies": A list of exactly 2 key synergy pairs. Each synergy pair must be a dictionary containing:
-   - "title": A brief, thematic title for the synergy (e.g. "Insightful Analysis Loop").
-   - "description": A short explanation of why these two cards are synergistic.
-   - "cards": A list of exactly 2 card names from the player's deck or common cards in this color archetype that form this synergy.
+Your task is to enrich the personal snapshot with high-quality strategic advice. You MUST return a JSON object that satisfies the strict schema.
 
-Return ONLY a raw JSON object matching the schema. No markdown block wrapping, no ```json, just the pure JSON.
+Guidelines for Mulligan Insights:
+- Grouped in mulligan_trends are keep/toss win rates. Devise a strategic recommendation ('Keep', 'Toss', or 'Neutral') for each card listed.
+- Distinguish between mechanical decisions (e.g., throwing away high-cost uninkable cards early to prevent clogging your hand) versus strategic matchup choices (e.g. keeping specific card challenged against aggressive colors, or tossing removal against control). Focus your coaching tips on strategic matchups.
+
+Guidelines for Pivot Insights:
+- In pivot_cards are cards associated with momentum-loss turns. Formulate a coaching note for each card detailing how to protect or play around this momentum loss risk (e.g., holding back unless you have active ward protection or board clear threats have passed).
 """
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.1-flash-lite',
             contents=prompt,
             config=types.GenerateContentConfig(
-                response_mime_type="application/json"
+                response_mime_type="application/json",
+                response_schema=DeckEnrichmentSchema
             )
         )
         
@@ -131,5 +161,7 @@ def _get_fallback_enrichment(snapshot: dict) -> dict:
                 "description": "Combining card drawing effects with passive questing secures late game inevitability.",
                 "cards": ["Gameplay Analysis", "Gain Powerful Insight"]
             }
-        ]
+        ],
+        "mulligan_insights": [],
+        "pivot_insights": []
     }

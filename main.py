@@ -40,7 +40,7 @@ from tools.fetch_current_lorcana_meta import fetch_current_lorcana_meta
 # Declare the Meta Specialist Sub-Agent
 meta_specialist = adk.Agent(
     name="Meta_Specialist",
-    model="gemini-2.5-flash",
+    model="gemini-3.1-flash-lite",
     instruction=(
         "You are a Lorcana Meta Specialist. Your job is to analyze the competitive Disney Lorcana metagame "
         "and help the Lead Coach understand what archetypes the player's opponent might be running, and the key cards in those archetypes.\n"
@@ -54,7 +54,7 @@ meta_specialist = adk.Agent(
 # Declare the Lead Coaching Agent (Master Orchestrator)
 lead_coach = adk.Agent(
     name="Lead_Coach",
-    model="gemini-2.5-flash",
+    model="gemini-3.1-flash-lite",
     instruction=(
         f"You are the Lead Lorcana Coach. Your role is to provide a master-class, premium post-game review for a player using duels.ink game logs.\n\n"
 

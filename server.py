@@ -34,7 +34,7 @@ from tools.get_match_history import get_match_history
 from tools.get_parsed_match_data import get_parsed_match_data
 from tools.generate_deck_snapshot import generate_deck_snapshot
 from tools.deck_metrics_analyst import get_deck_analysis_enrichment
-from tools.match_coach import generate_match_coaching
+from tools.match_coach import generate_match_coaching, generate_pivot_only
 from tools.context import current_token, current_player_id
 
 # ---------------------------------------------------------------------------
@@ -423,7 +423,10 @@ async def deck_analysis(deck_id: str, auth: Tuple[str, str] = Depends(get_auth))
             try:
                 with open(cached_analysis_path, "r", encoding="utf-8") as f:
                     cached_data = json.load(f)
-                    if "key_synergies" in cached_data and "top_improvement" in cached_data:
+                    # Ignore the cached file if it was generated as a fallback
+                    if ("key_synergies" in cached_data and 
+                        "mulligan_insights" in cached_data and 
+                        cached_data.get("token_usage", {}).get("note") != "fallback used"):
                         return JSONResponse(content=cached_data)
             except Exception as read_exc:
                 logger.warning("Failed to read cached analysis file: %s", read_exc)
@@ -530,16 +533,22 @@ async def deck_analysis(deck_id: str, auth: Tuple[str, str] = Depends(get_auth))
                 "mid": { "label": "Mid (Turns 7-10)", "percentage": mid_pct },
                 "late": { "label": "Late (Turns 11+)", "percentage": late_pct }
             },
+            "mulligan_insights": enrichment.get("mulligan_insights", []),
+            "pivot_insights": enrichment.get("pivot_insights", []),
             "token_usage": enrichment.get("token_usage", {})
         }
 
-        # Cache the enriched analysis payload
-        try:
-            os.makedirs(os.path.dirname(cached_analysis_path), exist_ok=True)
-            with open(cached_analysis_path, "w", encoding="utf-8") as f:
-                json.dump(payload, f, indent=2)
-        except Exception as cache_exc:
-            logger.warning("Could not cache enriched deck analysis: %s", cache_exc)
+        # Cache the enriched analysis payload only if it is not a fallback/degraded payload
+        if enrichment.get("token_usage", {}).get("note") != "fallback used":
+            try:
+                os.makedirs(os.path.dirname(cached_analysis_path), exist_ok=True)
+                with open(cached_analysis_path, "w", encoding="utf-8") as f:
+                    json.dump(payload, f, indent=2)
+                logger.info("Successfully cached enriched deck analysis: %s", deck_id)
+            except Exception as cache_exc:
+                logger.warning("Could not cache enriched deck analysis: %s", cache_exc)
+        else:
+            logger.info("Bypassed caching for fallback deck analysis: %s", deck_id)
 
         return JSONResponse(content=payload)
 
@@ -561,6 +570,35 @@ def enrich_mulligan_payload(payload: dict) -> dict:
     return payload
 
 
+def is_coaching_payload_degraded(payload: dict) -> bool:
+    """Detect if a cached coaching payload is a fallback/empty state."""
+    if not payload:
+        return True
+    
+    # Check for master error fallback marker
+    if payload.get("token_usage", {}).get("note") == "master error fallback used":
+        return True
+        
+    # Check if key sections are missing or empty
+    mulligan = payload.get("mulligan_analysis", {})
+    if not mulligan or mulligan.get("coach_verdict") in [None, "No verdict available.", ""]:
+        return True
+        
+    if not payload.get("takeaways"):
+        return True
+        
+    # Check for specific fallback strings in verdict
+    verdict = mulligan.get("coach_verdict", "")
+    if "You made reasonable mulligan decisions" in verdict:
+        return True
+        
+    # Check if execution_rating is missing
+    if not mulligan.get("execution_rating"):
+        return True
+        
+    return False
+
+
 @app.get("/api/matches/{game_id}/coaching")
 async def match_coaching(game_id: str, auth: Tuple[str, str] = Depends(get_auth)):
     """Return coaching analysis for a single game.
@@ -579,50 +617,60 @@ async def match_coaching(game_id: str, auth: Tuple[str, str] = Depends(get_auth)
         try:
             with open(review_path, "r", encoding="utf-8") as fh:
                 payload = json.load(fh)
-            
-            # Retroactively add execution_rating fallback for older cached files
-            if "mulligan_analysis" in payload and "execution_rating" not in payload["mulligan_analysis"]:
-                payload["mulligan_analysis"]["execution_rating"] = "Optimal"
-                
-            # If timeline is missing or we need to ensure the correct player is loaded
-            if "timeline" not in payload or "your_deck_colors" not in payload.get("match_metadata", {}) or payload.get("match_metadata", {}).get("opponent_name") == "Opponent":
-                summary_path = os.path.join(cached_dir, f"{game_id}_summary.json")
-                timeline_path = os.path.join(cached_dir, f"{game_id}_timeline.md")
-                if os.path.exists(summary_path) and os.path.exists(timeline_path):
-                    with open(summary_path, "r", encoding="utf-8") as sf:
-                        summary = json.load(sf)
-                    with open(timeline_path, "r", encoding="utf-8") as tf:
-                        timeline = tf.read()
-                    
-                    payload["timeline"] = timeline
-                    
-                    # Fix player 1/2 bug retroactively
-                    your_player_num = summary.get("match_metadata", {}).get("your_player", 1)
-                    player_key = f"player_{your_player_num}"
-                    player_data = summary.get("players", {}).get(player_key, {})
-                    initial_hand = player_data.get("initial_hand", [])
-                    mulligan_data = player_data.get("mulligan", {})
-                    mulliganed = mulligan_data.get("mulliganed", [])
-                    drawn = mulligan_data.get("drawn", [])
-                    
-                    if "mulligan_analysis" in payload:
-                        payload["mulligan_analysis"]["cards_details"] = {
-                            "initial_hand": initial_hand,
-                            "mulliganed": mulliganed,
-                            "drawn": drawn
-                        }
-                    
-                    if "match_metadata" in payload:
-                        payload["match_metadata"]["your_deck_colors"] = summary.get("match_metadata", {}).get("your_deck_colors", "")
-                        payload["match_metadata"]["went_first"] = summary.get("match_metadata", {}).get("went_first", True)
-                    
-                    # Re-cache updated version
-                    with open(review_path, "w", encoding="utf-8") as fh_out:
-                        json.dump(payload, fh_out, indent=2)
 
-            payload["cached"] = True
-            payload = enrich_mulligan_payload(payload)
-            return JSONResponse(content=payload)
+            if is_coaching_payload_degraded(payload):
+                logger.info("Cached review for %s is degraded. Ignoring cache to trigger regeneration.", game_id)
+            else:
+                # Retroactively add execution_rating fallback for older cached files
+                if "mulligan_analysis" in payload and "execution_rating" not in payload["mulligan_analysis"]:
+                    payload["mulligan_analysis"]["execution_rating"] = "Optimal"
+                    
+                # If timeline is missing or we need to ensure the correct player is loaded
+                if "timeline" not in payload or "your_deck_colors" not in payload.get("match_metadata", {}) or payload.get("match_metadata", {}).get("opponent_name") == "Opponent":
+                    summary_path = os.path.join(cached_dir, f"{game_id}_summary.json")
+                    timeline_path = os.path.join(cached_dir, f"{game_id}_timeline.md")
+                    if os.path.exists(summary_path) and os.path.exists(timeline_path):
+                        with open(summary_path, "r", encoding="utf-8") as sf:
+                            summary = json.load(sf)
+                        with open(timeline_path, "r", encoding="utf-8") as tf:
+                            timeline = tf.read()
+                        
+                        payload["timeline"] = timeline
+                        
+                        # Fix player 1/2 bug retroactively
+                        your_player_num = summary.get("match_metadata", {}).get("your_player", 1)
+                        player_key = f"player_{your_player_num}"
+                        player_data = summary.get("players", {}).get(player_key, {})
+                        initial_hand = player_data.get("initial_hand", [])
+                        mulligan_data = player_data.get("mulligan", {})
+                        mulliganed = mulligan_data.get("mulliganed", [])
+                        drawn = mulligan_data.get("drawn", [])
+                        
+                        if "mulligan_analysis" in payload:
+                            payload["mulligan_analysis"]["cards_details"] = {
+                                "initial_hand": initial_hand,
+                                "mulliganed": mulliganed,
+                                "drawn": drawn
+                            }
+                        
+                        if "match_metadata" in payload:
+                            payload["match_metadata"]["your_deck_colors"] = summary.get("match_metadata", {}).get("your_deck_colors", "")
+                            payload["match_metadata"]["went_first"] = summary.get("match_metadata", {}).get("went_first", True)
+                        
+                        # Re-cache updated version
+                        with open(review_path, "w", encoding="utf-8") as fh_out:
+                            json.dump(payload, fh_out, indent=2)
+
+                payload["cached"] = True
+                # Signal pivot availability to the frontend for lazy-loading.
+                # "ready" = pivot is stored in the cache file (frontend skips Phase 2 fetch)
+                # "pending" = old cache file has no pivot_turn, frontend must call /coaching/pivot
+                has_pivot = bool(payload.get("pivot_turn"))
+                payload["pivot_status"] = "ready" if has_pivot else "pending"
+                # Strip pivot_turn from the live response — frontend fetches it separately
+                payload.pop("pivot_turn", None)
+                payload = enrich_mulligan_payload(payload)
+                return JSONResponse(content=payload)
         except Exception as exc:
             logger.warning("Failed to read cached review for %s: %s", game_id, exc)
 
@@ -645,7 +693,7 @@ async def match_coaching(game_id: str, auth: Tuple[str, str] = Depends(get_auth)
 
     # ------ 3. Run LLM Coaching Review ------
     try:
-        coaching = generate_match_coaching(game_id, summary, timeline)
+        coaching = await generate_match_coaching(game_id, summary, timeline)
     except Exception as exc:
         logger.exception("generate_match_coaching failed for %s", game_id)
         raise HTTPException(
@@ -698,31 +746,255 @@ async def match_coaching(game_id: str, auth: Tuple[str, str] = Depends(get_auth)
                 "drawn": drawn
             }
         },
-        "pivot_turn": coaching.get("pivot_turn", {
-            "round_number": 5,
-            "tag": "CRITICAL MOMENT",
-            "player_state": {"lore": 0, "ink": 0},
-            "opponent_state": {"lore": 0, "ink": 0},
-            "your_actions": "Played cards.",
-            "momentum_shift": "No pivot turn details generated."
-        }),
         "takeaways": coaching.get("takeaways", ""),
         "cached": False,
+        "pivot_status": "pending",
         "token_usage": coaching.get("token_usage", {})
     }
+
+    # Inject rate limit indicators
+    if coaching.get("rate_limit_exceeded") or coaching.get("daily_limit_exceeded"):
+        payload["rate_limit_exceeded"] = coaching.get("rate_limit_exceeded", False)
+        payload["daily_limit_exceeded"] = coaching.get("daily_limit_exceeded", False)
 
     # Enrich mulligan cards with actual detail maps & URLs
     payload = enrich_mulligan_payload(payload)
 
-    # Save to cache
-    try:
-        with open(review_path, "w", encoding="utf-8") as fh:
-            json.dump(payload, fh, indent=2)
-        logger.info("Saved coaching review to %s", review_path)
-    except Exception as exc:
-        logger.warning("Failed to cache coaching review: %s", exc)
+    # Save to cache if not rate-limited and not degraded
+    is_degraded = bool(coaching.get("degraded_sections")) or coaching.get("token_usage", {}).get("note") == "master error fallback used"
+    if not payload.get("rate_limit_exceeded") and not payload.get("daily_limit_exceeded") and not is_degraded:
+        try:
+            cache_payload = {**payload}
+            # Preserve any pivot_turn already resolved (e.g. from gather) in cache
+            if coaching.get("pivot_turn"):
+                cache_payload["pivot_turn"] = coaching["pivot_turn"]
+            with open(review_path, "w", encoding="utf-8") as fh:
+                json.dump(cache_payload, fh, indent=2)
+            logger.info("Saved coaching review to %s", review_path)
+        except Exception as exc:
+            logger.warning("Failed to cache coaching review: %s", exc)
+    else:
+        logger.info("Bypassed caching for rate limit or degraded response payload: %s (degraded=%s)", game_id, is_degraded)
 
     return JSONResponse(content=payload)
+
+
+@app.get("/api/matches/{game_id}/coaching/pivot")
+async def match_coaching_pivot(game_id: str, auth: Tuple[str, str] = Depends(get_auth)):
+    """Return only the pivot_turn analysis for a single game.
+
+    Designed for lazy-loading: the frontend fires this after the main coaching
+    report has already rendered.  Checks a dedicated ``{game_id}_pivot.json``
+    sidecar first, then falls back to the parent ``_coach_review.json``, and
+    finally runs the pivot sub-agent on demand if neither cache exists.
+    """
+    token, player_id = auth
+
+    cached_dir = os.path.join(PROJECT_ROOT, "cached_analyses", player_id)
+    os.makedirs(cached_dir, exist_ok=True)
+    pivot_path = os.path.join(cached_dir, f"{game_id}_pivot.json")
+    timeline_structured_path = os.path.join(cached_dir, f"{game_id}_timeline_structured.json")
+    review_path = os.path.join(cached_dir, f"{game_id}_coach_review.json")
+
+    # ------ 1. Fast path: dedicated pivot sidecar ------
+    if os.path.exists(pivot_path):
+        try:
+            with open(pivot_path, "r", encoding="utf-8") as fh:
+                pivot_payload = json.load(fh)
+            logger.info("Serving cached pivot for %s", game_id)
+            return JSONResponse(content={"pivot_turn": pivot_payload, "cached": True})
+        except Exception as exc:
+            logger.warning("Failed to read pivot cache for %s: %s", game_id, exc)
+
+    # ------ 2. Extract from existing full review cache ------
+    if os.path.exists(review_path):
+        try:
+            with open(review_path, "r", encoding="utf-8") as fh:
+                review = json.load(fh)
+            if "pivot_turn" in review and review["pivot_turn"]:
+                pt = review["pivot_turn"]
+                # Persist sidecar so future reads hit the fast path
+                with open(pivot_path, "w", encoding="utf-8") as fh:
+                    json.dump(pt, fh, indent=2)
+                logger.info("Extracted pivot from review cache for %s", game_id)
+                return JSONResponse(content={"pivot_turn": pt, "cached": True})
+        except Exception as exc:
+            logger.warning("Failed to extract pivot from review for %s: %s", game_id, exc)
+
+    # ------ 3. On-demand pivot generation ------
+    summary_path = os.path.join(cached_dir, f"{game_id}_summary.json")
+    timeline_path = os.path.join(cached_dir, f"{game_id}_timeline.md")
+
+    if not os.path.exists(summary_path) or not os.path.exists(timeline_path):
+        # Cached match data not available — parse it first
+        try:
+            raw = get_parsed_match_data(game_id, token=token, player_id=player_id)
+            data = json.loads(raw)
+            if "error" in data:
+                raise HTTPException(status_code=502, detail=data["error"])
+            summary = data.get("summary", {})
+            timeline = data.get("timeline", "")
+        except Exception as exc:
+            logger.exception("get_parsed_match_data failed for pivot %s", game_id)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to parse match data for pivot analysis: {exc}",
+            ) from exc
+    else:
+        try:
+            with open(summary_path, "r", encoding="utf-8") as sf:
+                summary = json.load(sf)
+            with open(timeline_path, "r", encoding="utf-8") as tf:
+                timeline = tf.read()
+        except Exception as exc:
+            logger.exception("Failed to load cached match files for pivot %s", game_id)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to load cached match data: {exc}",
+            ) from exc
+
+    try:
+        pivot_result = await generate_pivot_only(game_id, summary, timeline)
+    except Exception as exc:
+        logger.exception("generate_pivot_only failed for %s", game_id)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Pivot analysis generation failed: {exc}",
+        ) from exc
+
+    # Rate-limit short-circuit — do NOT cache
+    if pivot_result.get("rate_limit_exceeded"):
+        logger.info("Bypassed pivot caching due to rate limit for %s", game_id)
+        return JSONResponse(content={
+            "pivot_turn": pivot_result.get("pivot_turn", {}),
+            "cached": False,
+            "rate_limit_exceeded": True,
+            "daily_limit_exceeded": pivot_result.get("daily_limit_exceeded", False)
+        })
+
+    pivot_turn = pivot_result.get("pivot_turn", {})
+    structured_timeline = pivot_result.get("structured_timeline", [])
+
+    # Persist pivot sidecar
+    try:
+        with open(pivot_path, "w", encoding="utf-8") as fh:
+            json.dump(pivot_turn, fh, indent=2)
+        logger.info("Saved pivot sidecar to %s", pivot_path)
+    except Exception as exc:
+        logger.warning("Failed to cache pivot sidecar for %s: %s", game_id, exc)
+
+    # Persist structured timeline sidecar
+    if structured_timeline:
+        try:
+            with open(timeline_structured_path, "w", encoding="utf-8") as fh:
+                json.dump(structured_timeline, fh, indent=2)
+            logger.info("Saved structured timeline sidecar to %s", timeline_structured_path)
+        except Exception as exc:
+            logger.warning("Failed to cache structured timeline for %s: %s", game_id, exc)
+
+    return JSONResponse(content={"pivot_turn": pivot_turn, "cached": False})
+
+
+@app.get("/api/matches/{game_id}/coaching/timeline")
+async def match_coaching_timeline(game_id: str, auth: Tuple[str, str] = Depends(get_auth)):
+    """Return the structured UI timeline JSON for a single game.
+
+    Designed for lazy-loading: fires after the main coaching payload renders.
+    3-tier lookup:
+      1. Dedicated ``{game_id}_timeline_structured.json`` sidecar.
+      2. Extract from ``{game_id}_coach_review.json`` if it embeds structured_timeline.
+      3. On-demand: run ``generate_pivot_only()`` and extract the timeline.
+    """
+    token, player_id = auth
+
+    cached_dir = os.path.join(PROJECT_ROOT, "cached_analyses", player_id)
+    os.makedirs(cached_dir, exist_ok=True)
+    timeline_structured_path = os.path.join(cached_dir, f"{game_id}_timeline_structured.json")
+    pivot_path = os.path.join(cached_dir, f"{game_id}_pivot.json")
+    review_path = os.path.join(cached_dir, f"{game_id}_coach_review.json")
+
+    # ------ 1. Fast path: dedicated structured timeline sidecar ------
+    if os.path.exists(timeline_structured_path):
+        try:
+            with open(timeline_structured_path, "r", encoding="utf-8") as fh:
+                tl = json.load(fh)
+            logger.info("Serving cached structured timeline for %s", game_id)
+            return JSONResponse(content={"timeline": tl, "cached": True})
+        except Exception as exc:
+            logger.warning("Failed to read structured timeline cache for %s: %s", game_id, exc)
+
+    # ------ 2. Extract from existing review cache if embedded ------
+    if os.path.exists(review_path):
+        try:
+            with open(review_path, "r", encoding="utf-8") as fh:
+                review = json.load(fh)
+            if "structured_timeline" in review and review["structured_timeline"]:
+                tl = review["structured_timeline"]
+                with open(timeline_structured_path, "w", encoding="utf-8") as fh:
+                    json.dump(tl, fh, indent=2)
+                logger.info("Extracted structured timeline from review cache for %s", game_id)
+                return JSONResponse(content={"timeline": tl, "cached": True})
+        except Exception as exc:
+            logger.warning("Failed to extract structured timeline from review for %s: %s", game_id, exc)
+
+    # ------ 3. On-demand generation via pivot agent ------
+    summary_path = os.path.join(cached_dir, f"{game_id}_summary.json")
+    timeline_path = os.path.join(cached_dir, f"{game_id}_timeline.md")
+
+    if not os.path.exists(summary_path) or not os.path.exists(timeline_path):
+        try:
+            raw = get_parsed_match_data(game_id, token=token, player_id=player_id)
+            data = json.loads(raw)
+            if "error" in data:
+                raise HTTPException(status_code=502, detail=data["error"])
+            summary = data.get("summary", {})
+            timeline_md = data.get("timeline", "")
+        except Exception as exc:
+            logger.exception("get_parsed_match_data failed for timeline %s", game_id)
+            raise HTTPException(status_code=500, detail=f"Failed to parse match data: {exc}") from exc
+    else:
+        try:
+            with open(summary_path, "r", encoding="utf-8") as sf:
+                summary = json.load(sf)
+            with open(timeline_path, "r", encoding="utf-8") as tf:
+                timeline_md = tf.read()
+        except Exception as exc:
+            logger.exception("Failed to load cached match files for timeline %s", game_id)
+            raise HTTPException(status_code=500, detail=f"Failed to load cached match data: {exc}") from exc
+
+    try:
+        pivot_result = await generate_pivot_only(game_id, summary, timeline_md)
+    except Exception as exc:
+        logger.exception("generate_pivot_only failed for timeline %s", game_id)
+        raise HTTPException(status_code=500, detail=f"Timeline generation failed: {exc}") from exc
+
+    if pivot_result.get("rate_limit_exceeded"):
+        return JSONResponse(content={
+            "timeline": [],
+            "cached": False,
+            "rate_limit_exceeded": True,
+            "daily_limit_exceeded": pivot_result.get("daily_limit_exceeded", False)
+        })
+
+    structured_timeline = pivot_result.get("structured_timeline", [])
+    pivot_turn = pivot_result.get("pivot_turn", {})
+
+    # Persist both sidecars
+    if structured_timeline:
+        try:
+            with open(timeline_structured_path, "w", encoding="utf-8") as fh:
+                json.dump(structured_timeline, fh, indent=2)
+        except Exception as exc:
+            logger.warning("Failed to cache structured timeline for %s: %s", game_id, exc)
+
+    if pivot_turn and not os.path.exists(pivot_path):
+        try:
+            with open(pivot_path, "w", encoding="utf-8") as fh:
+                json.dump(pivot_turn, fh, indent=2)
+        except Exception as exc:
+            logger.warning("Failed to cache pivot for %s: %s", game_id, exc)
+
+    return JSONResponse(content={"timeline": structured_timeline, "cached": False})
 
 
 # ---------------------------------------------------------------------------

@@ -22,6 +22,33 @@ function App() {
   const [selectedDeckId, setSelectedDeckId] = useState(null);
   const [selectedMatchId, setSelectedMatchId] = useState(null);
   const [previousView, setPreviousView] = useState('dashboard');
+  const [rateLimitType, setRateLimitType] = useState('none'); // 'none' | 'rpm' | 'rpd'
+  const [cooldownTime, setCooldownTime] = useState(0);
+
+  // Cooldown countdown timer for minute-level rate limits
+  useEffect(() => {
+    if (rateLimitType === 'rpm' && cooldownTime > 0) {
+      const timer = setTimeout(() => {
+        setCooldownTime(prev => {
+          if (prev <= 1) {
+            setRateLimitType('none');
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [rateLimitType, cooldownTime]);
+
+  const handleRateLimitHit = (isDaily) => {
+    if (isDaily) {
+      setRateLimitType('rpd');
+    } else {
+      setRateLimitType('rpm');
+      setCooldownTime(60);
+    }
+  };
 
   // Fetch match history and decks when token is set/changed
   useEffect(() => {
@@ -173,6 +200,9 @@ function App() {
           matches={matches}
           loading={loadingData}
           error={errorData}
+          rateLimitType={rateLimitType}
+          cooldownTime={cooldownTime}
+          onRateLimitHit={handleRateLimitHit}
         />
       )}
 
@@ -185,6 +215,9 @@ function App() {
           onBackToDashboard={handleBackToDashboard}
           onSelectMatch={handleSelectMatch}
           matches={matches}
+          rateLimitType={rateLimitType}
+          cooldownTime={cooldownTime}
+          onRateLimitHit={handleRateLimitHit}
         />
       )}
 
@@ -195,6 +228,9 @@ function App() {
             gameId={selectedMatchId} 
             token={token} 
             onBack={handleBackFromMatch} 
+            rateLimitType={rateLimitType}
+            cooldownTime={cooldownTime}
+            onRateLimitHit={handleRateLimitHit}
           />
         </div>
       )}
