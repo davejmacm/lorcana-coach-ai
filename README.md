@@ -94,17 +94,67 @@ Log fetching/
    GEMINI_API_KEY=your_gemini_api_key_here
    ```
 
-### Running
+### Running the Services
 
-```bash
-# From the project directory, using the venv Python:
+The Lorcana Coach AI system consists of three main interfaces/services:
+
+1. **CLI Orchestrator**: The command-line interface for direct interactive analysis.
+2. **Backend API Server**: A FastAPI server that handles data retrieval, parsing, and triggers Gemini-powered analysis.
+3. **Web UI Dashboard**: A React + Vite frontend that provides a beautiful, interactive dashboard for reviewing match history, decks, and coaching recommendations.
+
+---
+
+#### 1. Running the CLI Orchestrator
+To run the CLI tool, run `main.py` using your virtual environment's Python:
+
+On Windows (PowerShell):
+```powershell
 .venv\Scripts\python.exe main.py
 ```
 
-Or on Windows CMD:
+On Windows (CMD):
 ```cmd
-"e:\Antigravity workspaces\Lorcana Coach AI\Log fetching\.venv\Scripts\python.exe" main.py
+.venv\Scripts\python.exe main.py
 ```
+
+On Linux/macOS:
+```bash
+.venv/bin/python main.py
+```
+
+---
+
+#### 2. Running the Backend API Server
+The web dashboard requires the FastAPI backend to be running. Start it on port `8000`:
+
+On Windows (PowerShell):
+```powershell
+.venv\Scripts\python.exe server.py
+```
+
+On Windows (CMD):
+```cmd
+.venv\Scripts\python.exe server.py
+```
+
+On Linux/macOS:
+```bash
+.venv/bin/python server.py
+```
+
+This starts the server at `http://127.0.0.1:8000`. Keep this terminal window open.
+
+---
+
+#### 3. Running the Web UI Dashboard
+Once the backend is running, you can launch the React frontend.
+
+1. Navigate to the `ui` directory:
+   ```bash
+   cd ui
+   ```
+2. Follow the setup instructions in the [ui/README.md](file:///e:/Antigravity%20workspaces/Lorcana%20Coach%20AI/Log%20fetching/ui/README.md) to install dependencies and start the development server.
+
 
 ## Usage
 

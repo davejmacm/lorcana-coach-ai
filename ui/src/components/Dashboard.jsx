@@ -1,8 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { 
-  LogOut, Target, Cpu, Trophy, BarChart3, Settings, 
-  HelpCircle, Eye, CheckCircle, XCircle
+import {
+  LogOut, Target, Cpu, Trophy, BarChart3, Settings,
+  HelpCircle, Eye, CheckCircle, XCircle, Loader2
 } from 'lucide-react';
 import DeckColorBadge from './DeckColorBadge';
 
@@ -19,26 +19,26 @@ const renderDiagonalBackground = (colors) => {
   if (!colors || colors.length === 0) {
     return <div style={{ background: 'var(--surface-container-highest)', width: '100%', height: '100%' }} />;
   }
-  
+
   if (colors.length === 1) {
     const colName = colors[0].toLowerCase();
     const colObj = inkColors[colors[0]] || { color: '#8e2de2' };
     return (
       <div style={{
         backgroundImage: `url(/ink-icons/${colName}.png)`,
-        backgroundSize: '120%',
+        backgroundSize: 'cover',
         backgroundPosition: 'center',
         width: '100%',
         height: '100%'
       }} />
     );
   }
-  
+
   const col1 = colors[0].toLowerCase();
   const col2 = colors[1].toLowerCase();
   const color1Hex = inkColors[colors[0]]?.color || '#00dbe9';
   const color2Hex = inkColors[colors[1]]?.color || '#7d01b1';
-  
+
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
       {/* Left Ink Color Image */}
@@ -46,7 +46,7 @@ const renderDiagonalBackground = (colors) => {
         position: 'absolute',
         inset: 0,
         backgroundImage: `url(/ink-icons/${col1}.png)`,
-        backgroundSize: '120%',
+        backgroundSize: 'cover',
         backgroundPosition: 'center',
         clipPath: 'polygon(0 0, 60% 0, 40% 100%, 0 100%)'
       }} />
@@ -55,7 +55,7 @@ const renderDiagonalBackground = (colors) => {
         position: 'absolute',
         inset: 0,
         backgroundImage: `url(/ink-icons/${col2}.png)`,
-        backgroundSize: '120%',
+        backgroundSize: 'cover',
         backgroundPosition: 'center',
         clipPath: 'polygon(60% 0, 100% 0, 100% 100%, 40% 100%)'
       }} />
@@ -78,6 +78,7 @@ const renderDiagonalBackground = (colors) => {
 
 const Dashboard = ({ token, onDisconnect, onSelectDeck, onSelectMatch, decks = [], matches = [], loading = false, error = null }) => {
   const [showAllDecks, setShowAllDecks] = React.useState(false);
+  const [formatFilter, setFormatFilter] = React.useState('ALL'); // 'ALL' | 'CORE' | 'INFINITY'
   const [matchPage, setMatchPage] = React.useState(1);
   const matchesPerPage = 10;
 
@@ -114,7 +115,12 @@ const Dashboard = ({ token, onDisconnect, onSelectDeck, onSelectMatch, decks = [
   }
 
   // Decks rendering logic
-  const displayedDecks = showAllDecks ? decks : decks.slice(0, 4);
+  const filteredDecks = React.useMemo(() => {
+    if (formatFilter === 'ALL') return decks;
+    return decks.filter(deck => deck.format?.toUpperCase() === formatFilter);
+  }, [decks, formatFilter]);
+
+  const displayedDecks = showAllDecks ? filteredDecks : filteredDecks.slice(0, 4);
 
   // Pagination calculations
   const totalMatchPages = Math.ceil(matches.length / matchesPerPage);
@@ -145,7 +151,7 @@ const Dashboard = ({ token, onDisconnect, onSelectDeck, onSelectMatch, decks = [
           </h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <button 
+          <button
             onClick={onDisconnect}
             style={{
               background: 'none',
@@ -165,8 +171,8 @@ const Dashboard = ({ token, onDisconnect, onSelectDeck, onSelectMatch, decks = [
           </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', borderLeft: '1px solid var(--glass-stroke)', paddingLeft: '16px' }}>
             <Settings size={18} style={{ color: 'var(--on-surface-variant)', cursor: 'pointer' }} />
-            <img 
-              alt="User Avatar" 
+            <img
+              alt="User Avatar"
               src="https://lh3.googleusercontent.com/aida-public/AB6AXuAM1h6cU1QWo-AEPoCCjvKDPQhJrIfX8wvTEU-9KKWQReC7Tl3RUcggpNQOlSEf8BaE9BQs_nq24O8XHDAnWA2Iq3c8PSbSYKyS0AqOlLU5EDDeWCtDRaL2Rftq15vcpMRuZ4hZx0tEqf1dBFfMaa7LBbEKP9juX8sxq-zH079EGjJg5Bn1o-sA5Q6gEB7Iqyhwe3GMjNnV3wLIh_1w_zvuapq0g6MXRUH4Q7rbkMezxxC5ms9BQrlBo0-elxV_eYfZpaIGV8TbmtsV"
               style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid rgba(125, 244, 255, 0.3)' }}
             />
@@ -176,7 +182,7 @@ const Dashboard = ({ token, onDisconnect, onSelectDeck, onSelectMatch, decks = [
 
       {/* Main Container */}
       <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '2.5rem 3rem 0 3rem' }}>
-        
+
         {/* Title Header Section */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '2.5rem' }} className="stagger-item stagger-1">
           <div>
@@ -197,11 +203,11 @@ const Dashboard = ({ token, onDisconnect, onSelectDeck, onSelectMatch, decks = [
               background: 'var(--surface-container-high)',
               border: '1px solid var(--glass-stroke)'
             }}>
-              <span style={{ 
-                width: '8px', 
-                height: '8px', 
-                background: 'var(--primary-fixed)', 
-                borderRadius: '50%', 
+              <span style={{
+                width: '8px',
+                height: '8px',
+                background: 'var(--primary-fixed)',
+                borderRadius: '50%',
                 boxShadow: '0 0 10px #7df4ff',
                 display: 'inline-block'
               }} className="animate-pulse" />
@@ -214,7 +220,7 @@ const Dashboard = ({ token, onDisconnect, onSelectDeck, onSelectMatch, decks = [
 
         {/* Performance Bento Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '3rem' }} className="stagger-item stagger-2">
-          
+
           {/* Bento Card 1 */}
           <div className="glass-panel shimmer-effect" style={{ padding: '1.5rem', borderRadius: '16px', display: 'flex', flexDirection: 'column', height: '140px', justifyContent: 'space-between' }}>
             <p style={{ fontFamily: 'var(--font-technical)', fontSize: '0.7rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '1px', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -259,11 +265,11 @@ const Dashboard = ({ token, onDisconnect, onSelectDeck, onSelectMatch, decks = [
         {/* Decks Grid Section */}
         <div style={{ marginBottom: '3.5rem' }} className="stagger-item stagger-3">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <h3 style={{ 
-              fontFamily: 'var(--font-headline)', 
-              fontSize: '1.4rem', 
+            <h3 style={{
+              fontFamily: 'var(--font-headline)',
+              fontSize: '1.4rem',
               fontWeight: '700',
-              margin: 0, 
+              margin: 0,
               color: '#ffffff',
               display: 'flex',
               alignItems: 'center',
@@ -271,34 +277,82 @@ const Dashboard = ({ token, onDisconnect, onSelectDeck, onSelectMatch, decks = [
             }}>
               <span className="material-symbols-outlined" style={{ color: 'var(--secondary)', fontSize: '22px' }}>style</span> Active Deck Collections
             </h3>
-            {decks.length > 4 && (
-              <button 
-                onClick={() => setShowAllDecks(!showAllDecks)}
-                style={{
-                  background: 'none',
-                  border: '1px solid var(--glass-stroke)',
-                  color: 'var(--primary-fixed-dim)',
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '0.75rem',
-                  fontFamily: 'var(--font-technical)',
-                  fontWeight: 600,
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--primary-fixed)'}
-                onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--glass-stroke)'}
-              >
-                {showAllDecks ? 'SHOW LESS' : `SHOW ALL (${decks.length})`}
-              </button>
-            )}
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              {/* Format Filter Segmented Controls */}
+              <div style={{
+                display: 'inline-flex',
+                background: 'rgba(255,255,255,0.02)',
+                border: '1px solid var(--glass-stroke)',
+                borderRadius: '8px',
+                padding: '3px',
+                marginRight: '8px'
+              }}>
+                {['ALL', 'CORE', 'INFINITY'].map(format => {
+                  const isActive = formatFilter === format;
+                  return (
+                    <button
+                      key={format}
+                      onClick={() => {
+                        setFormatFilter(format);
+                        setShowAllDecks(false); // Reset pagination when changing filter
+                      }}
+                      style={{
+                        background: isActive ? 'rgba(0, 240, 255, 0.1)' : 'transparent',
+                        border: isActive ? '1px solid rgba(0, 240, 255, 0.3)' : '1px solid transparent',
+                        color: isActive ? 'var(--primary-fixed)' : 'var(--on-surface-variant)',
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '0.7rem',
+                        fontFamily: 'var(--font-technical)',
+                        fontWeight: 600,
+                        textTransform: 'uppercase',
+                        transition: 'all 0.2s',
+                        letterSpacing: '0.5px'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isActive) e.currentTarget.style.color = '#fff';
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive) e.currentTarget.style.color = 'var(--on-surface-variant)';
+                      }}
+                    >
+                      {format}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Show All / Less Button */}
+              {filteredDecks.length > 4 && (
+                <button
+                  onClick={() => setShowAllDecks(!showAllDecks)}
+                  style={{
+                    background: 'none',
+                    border: '1px solid var(--glass-stroke)',
+                    color: 'var(--primary-fixed-dim)',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '0.75rem',
+                    fontFamily: 'var(--font-technical)',
+                    fontWeight: 600,
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--primary-fixed)'}
+                  onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--glass-stroke)'}
+                >
+                  {showAllDecks ? 'SHOW LESS' : `SHOW ALL (${filteredDecks.length})`}
+                </button>
+              )}
+            </div>
           </div>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '1.5rem' }}>
+
+          <div style={{ display: 'grid', gridTemplateColumns: displayedDecks.length > 0 ? 'repeat(auto-fill, minmax(400px, 1fr))' : '1fr', gap: '1.5rem' }}>
             {displayedDecks.map(deck => {
               const subtitle = deck.format === 'Core' ? 'Strategic Tier 1' : 'Economic Dominance';
               return (
-                <div 
+                <div
                   key={deck.id}
                   className="glass-panel"
                   style={{
@@ -307,7 +361,7 @@ const Dashboard = ({ token, onDisconnect, onSelectDeck, onSelectMatch, decks = [
                     transition: 'all 0.3s',
                     display: 'flex',
                     flexDirection: 'column',
-                    height: '240px',
+                    height: '280px',
                     boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
                   }}
                   onMouseEnter={(e) => {
@@ -320,9 +374,9 @@ const Dashboard = ({ token, onDisconnect, onSelectDeck, onSelectMatch, decks = [
                   }}
                 >
                   {/* Image blending background */}
-                  <div style={{ height: '140px', width: '100%', position: 'relative' }}>
+                  <div style={{ height: '165px', width: '100%', position: 'relative' }}>
                     {renderDiagonalBackground(deck.colors)}
-                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(13, 17, 23, 1) 0%, rgba(13, 17, 23, 0.4) 70%, transparent 100%)' }} />
+                    <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, var(--obsidian-base) 0%, rgba(5, 7, 10, 0.35) 60%, transparent 100%)' }} />
                     {/* Format Badge overlay on tile */}
                     <div style={{
                       position: 'absolute',
@@ -365,7 +419,7 @@ const Dashboard = ({ token, onDisconnect, onSelectDeck, onSelectMatch, decks = [
                         </div>
                       </div>
 
-                      <button 
+                      <button
                         onClick={() => onSelectDeck(deck.id)}
                         style={{
                           display: 'flex',
@@ -401,17 +455,31 @@ const Dashboard = ({ token, onDisconnect, onSelectDeck, onSelectMatch, decks = [
                 </div>
               );
             })}
+            {displayedDecks.length === 0 && (
+              <div style={{
+                textAlign: 'center',
+                padding: '3rem',
+                color: 'var(--on-surface-variant)',
+                background: 'rgba(255,255,255,0.01)',
+                border: '1px dashed var(--outline-variant)',
+                borderRadius: '12px',
+                fontFamily: 'var(--font-technical)',
+                fontSize: '0.9rem'
+              }}>
+                No active {formatFilter === 'ALL' ? '' : `${formatFilter} `}decks found in your collection.
+              </div>
+            )}
           </div>
         </div>
 
         {/* Tabular Match History section */}
         <div style={{ marginBottom: '4rem' }} className="stagger-item stagger-4">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <h3 style={{ 
-              fontFamily: 'var(--font-headline)', 
-              fontSize: '1.4rem', 
+            <h3 style={{
+              fontFamily: 'var(--font-headline)',
+              fontSize: '1.4rem',
               fontWeight: '700',
-              margin: 0, 
+              margin: 0,
               color: '#ffffff',
               display: 'flex',
               alignItems: 'center',
@@ -462,7 +530,7 @@ const Dashboard = ({ token, onDisconnect, onSelectDeck, onSelectMatch, decks = [
 
           <div className="glass-panel" style={{ borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--glass-stroke)', position: 'relative', boxShadow: '0 12px 40px rgba(0,0,0,0.6)' }}>
             <div style={{ height: '1.5px', background: 'linear-gradient(90deg, transparent, var(--primary-fixed), transparent)', opacity: 0.5 }} />
-            
+
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '700px' }}>
                 <thead>
@@ -478,20 +546,20 @@ const Dashboard = ({ token, onDisconnect, onSelectDeck, onSelectMatch, decks = [
                   {paginatedMatches.map((match, idx) => {
                     const isWin = match.result?.toLowerCase() === 'win';
                     const activeColor = inkColors[match.your_deck_colors?.split('/')[0]]?.color || '#00dbe9';
-                    
+
                     return (
-                      <tr 
-                        key={match.game_id} 
+                      <tr
+                        key={match.game_id}
                         style={{ borderBottom: idx !== paginatedMatches.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none', transition: 'background-color 0.2s' }}
                         className="match-history-row"
                         onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.02)'}
                         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                       >
                         <td style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{ 
-                            width: '8px', 
-                            height: '8px', 
-                            background: activeColor, 
+                          <span style={{
+                            width: '8px',
+                            height: '8px',
+                            background: activeColor,
                             borderRadius: '50%',
                             display: 'inline-block',
                             boxShadow: `0 0 8px ${activeColor}`

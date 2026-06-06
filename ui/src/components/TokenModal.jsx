@@ -5,9 +5,8 @@ import accountImg from '../assets/tokenScreenshots/account.PNG';
 import apiTokensImg from '../assets/tokenScreenshots/API_tokens.PNG';
 import copyTokenImg from '../assets/tokenScreenshots/copy_token.PNG';
 
-const TokenModal = ({ onClose, onConnect }) => {
+const TokenModal = ({ onClose }) => {
   const [activeStep, setActiveStep] = useState(1);
-  const [token, setToken] = useState('');
   const [isZoomed, setIsZoomed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -143,25 +142,13 @@ const TokenModal = ({ onClose, onConnect }) => {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '1rem', marginTop: 'auto', flexDirection: isMobile ? 'column' : 'row' }}>
-            <input
-              type="text"
-              placeholder="Paste Bearer Token Here..."
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              style={{
-                flex: 1, 
-                padding: '12px', 
-                borderRadius: '8px', 
-                border: '1px solid rgba(255,255,255,0.2)',
-                background: 'rgba(0,0,0,0.5)', 
-                color: 'white', 
-                fontSize: '1rem',
-                width: '100%'
-              }}
-            />
-            <button className="btn-primary" onClick={() => onConnect(token)} style={{ width: isMobile ? '100%' : 'auto' }}>
-              Connect
+          <div style={{ display: 'flex', marginTop: '2rem', justifyContent: 'center' }}>
+            <button 
+              className="btn-primary" 
+              onClick={onClose}
+              style={{ width: '100%', maxWidth: '300px' }}
+            >
+              Understood
             </button>
           </div>
         </motion.div>

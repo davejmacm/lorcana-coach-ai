@@ -5,11 +5,13 @@ import TokenModal from './components/TokenModal';
 import Dashboard from './components/Dashboard';
 import LorebookReview from './components/LorebookReview';
 import CoachAnalysisTabs from './components/CoachAnalysisTabs';
+import Login from './components/Login';
+import SignUp from './components/SignUp';
 import './index.css';
 
 function App() {
-  const [view, setView] = useState('hero'); // 'hero' | 'dashboard' | 'lorebook' | 'inkwell'
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [view, setView] = useState(() => localStorage.getItem('duels_ink_token') ? 'dashboard' : 'landing');
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [token, setToken] = useState(() => localStorage.getItem('duels_ink_token') || '');
 
   const [decks, setDecks] = useState([]);
@@ -24,7 +26,7 @@ function App() {
   // Fetch match history and decks when token is set/changed
   useEffect(() => {
     if (!token) {
-      setView('hero');
+      setView('landing');
       return;
     }
 
@@ -48,7 +50,8 @@ function App() {
         setMatches(matchesData.matches || []);
         setView('dashboard');
       } catch (err) {
-        setErrorData(err.message);
+        setErrorData(err.message || 'Connection failed.');
+        setView('landing');
       } finally {
         setLoadingData(false);
       }
@@ -57,11 +60,51 @@ function App() {
     fetchData();
   }, [token]);
 
-  const handleConnect = (newToken) => {
-    console.log("Token connected:", newToken);
+  const handleRegisterSubmit = async (username, email, password, newToken) => {
+    setLoadingData(true);
+    setErrorData(null);
+    try {
+      console.log("Validating token for registration...");
+      const [decksRes, matchesRes] = await Promise.all([
+        fetch('/api/decks', { headers: { 'Authorization': `Bearer ${newToken}` } }),
+        fetch('/api/matches', { headers: { 'Authorization': `Bearer ${newToken}` } })
+      ]);
+
+      if (!decksRes.ok || !matchesRes.ok) {
+        throw new Error('Failed to connect. Make sure your FastAPI backend is running and the token is correct.');
+      }
+
+      const decksData = await decksRes.json();
+      const matchesData = await matchesRes.json();
+
+      // Retrieve existing simulated user database
+      const users = JSON.parse(localStorage.getItem('illumineer_users') || '{}');
+      users[email.trim().toLowerCase()] = {
+        username: username.trim(),
+        email: email.trim().toLowerCase(),
+        password: password,
+        token: newToken
+      };
+
+      // Save user database and active credentials
+      localStorage.setItem('illumineer_users', JSON.stringify(users));
+      localStorage.setItem('duels_ink_token', newToken);
+
+      setDecks(decksData);
+      setMatches(matchesData.matches || []);
+      setToken(newToken);
+      setView('dashboard');
+    } catch (err) {
+      setErrorData(err.message || 'FastAPI backend is offline or token is invalid.');
+    } finally {
+      setLoadingData(false);
+    }
+  };
+
+  const handleLoginSubmit = (newToken, email) => {
     localStorage.setItem('duels_ink_token', newToken);
     setToken(newToken);
-    setIsModalOpen(false);
+    setView('dashboard');
   };
 
   const handleDisconnect = () => {
@@ -71,7 +114,7 @@ function App() {
     setMatches([]);
     setSelectedDeckId(null);
     setSelectedMatchId(null);
-    setView('hero');
+    setView('landing');
   };
 
   const handleSelectDeck = (deckId) => {
@@ -97,8 +140,30 @@ function App() {
 
   return (
     <div>
-      {view === 'hero' && (
-        <Hero onGetStarted={() => setIsModalOpen(true)} />
+      {view === 'landing' && (
+        <Hero 
+          onGetStarted={() => { setErrorData(null); setView('signup'); }} 
+          onNavigateToLogin={() => { setErrorData(null); setView('login'); }}
+          onShowHelp={() => setIsHelpOpen(true)}
+        />
+      )}
+
+      {view === 'login' && (
+        <Login 
+          onLogin={handleLoginSubmit} 
+          onNavigateToSignUp={() => { setErrorData(null); setView('signup'); }}
+        />
+      )}
+
+      {view === 'signup' && (
+        <SignUp 
+          onRegister={handleRegisterSubmit}
+          onNavigateToLogin={() => { setErrorData(null); setView('login'); }}
+          onShowHelp={() => setIsHelpOpen(true)}
+          loading={loadingData}
+          error={errorData}
+          setError={setErrorData}
+        />
       )}
       
       {view === 'dashboard' && (
@@ -138,10 +203,9 @@ function App() {
       )}
 
       <AnimatePresence>
-        {isModalOpen && (
+        {isHelpOpen && (
           <TokenModal 
-            onClose={() => setIsModalOpen(false)} 
-            onConnect={handleConnect} 
+            onClose={() => setIsHelpOpen(false)} 
           />
         )}
       </AnimatePresence>

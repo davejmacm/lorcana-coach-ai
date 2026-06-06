@@ -396,3 +396,12 @@ a {
   color: var(--primary-fixed-dim);
   font-weight: bold;
 }
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

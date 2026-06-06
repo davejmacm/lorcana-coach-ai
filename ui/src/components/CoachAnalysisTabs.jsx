@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
-import { 
-  Loader2, CornerDownRight, TrendingUp, Cpu, 
+import {
+  Loader2, CornerDownRight, TrendingUp, Cpu,
   HelpCircle, ArrowLeft, ChevronRight, User, AlertCircle,
   Sparkles, CheckCircle2, XCircle, ArrowRight, Zap, Play, Clock, Award,
   ChevronDown, ChevronUp
@@ -65,44 +67,49 @@ const getRatingBadgeStyle = (rating) => {
 };
 
 // Safe Mulligan Card component with local image error fallback state
-const MulliganCard = ({ card }) => {
+const MulliganCard = ({ card, onClick, discarded }) => {
   const [imgError, setImgError] = useState(false);
   if (!card) return null;
   const colorStyle = inkColors[card.ink] || { color: '#00dbe9' };
   
   return (
-    <div 
+    <div
       style={{
         width: '120px',
         height: '170px',
         borderRadius: '8px',
-        border: `1.5px solid ${colorStyle.color}80`,
+        border: discarded ? '2px solid var(--ink-magenta)' : `1.5px solid ${colorStyle.color}80`,
         background: 'rgba(5, 7, 10, 0.95)',
-        boxShadow: `0 8px 16px rgba(0,0,0,0.6)`,
+        boxShadow: discarded ? '0 0 10px rgba(255, 45, 85, 0.2)' : `0 8px 16px rgba(0,0,0,0.6)`,
         overflow: 'hidden',
         position: 'relative',
         flexShrink: 0,
         display: 'flex',
         flexDirection: 'column',
-        transition: 'all 0.2s'
+        transition: 'all 0.2s',
+        cursor: 'zoom-in',
+        zIndex: 1
       }}
       className="mulligan-card-item"
+      onClick={onClick}
       onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'scale(1.05) translateY(-5px)';
-        e.currentTarget.style.borderColor = colorStyle.color;
-        e.currentTarget.style.boxShadow = `0 0 15px ${colorStyle.color}`;
+        e.currentTarget.style.transform = 'scale(1.5) translateY(-10px)';
+        e.currentTarget.style.borderColor = discarded ? 'var(--ink-magenta)' : colorStyle.color;
+        e.currentTarget.style.boxShadow = discarded ? '0 0 25px var(--ink-magenta)' : `0 0 20px ${colorStyle.color}`;
+        e.currentTarget.style.zIndex = 10;
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = 'none';
-        e.currentTarget.style.borderColor = `${colorStyle.color}80`;
-        e.currentTarget.style.boxShadow = `0 8px 16px rgba(0,0,0,0.6)`;
+        e.currentTarget.style.borderColor = discarded ? 'var(--ink-magenta)' : `${colorStyle.color}80`;
+        e.currentTarget.style.boxShadow = discarded ? '0 0 10px rgba(255, 45, 85, 0.2)' : `0 8px 16px rgba(0,0,0,0.6)`;
+        e.currentTarget.style.zIndex = 1;
       }}
     >
       {card.image_url && !imgError ? (
-        <img 
-          src={card.image_url} 
-          alt={card.name} 
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+        <img
+          src={card.image_url}
+          alt={card.name}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           onError={() => setImgError(true)}
         />
       ) : (
@@ -123,7 +130,117 @@ const MulliganCard = ({ card }) => {
           </div>
         </div>
       )}
+
+      {/* Discarded Overlay */}
+      {discarded && (
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'rgba(255, 45, 85, 0.45)',
+          backdropFilter: 'blur(1px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#fff',
+          fontFamily: 'var(--font-technical)',
+          fontSize: '0.75rem',
+          fontWeight: '900',
+          textTransform: 'uppercase',
+          letterSpacing: '1px',
+          pointerEvents: 'none'
+        }}>
+          Discarded
+        </div>
+      )}
     </div>
+  );
+};
+
+const ZoomedCardModal = ({ card, onClose }) => {
+  if (!card) return null;
+  const colorStyle = inkColors[card.ink] || { color: '#00dbe9' };
+  const [imgError, setImgError] = useState(false);
+
+  return createPortal(
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100vw',
+      height: '100vh',
+      zIndex: 99999,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }}>
+      {/* Backdrop */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(3, 5, 8, 0.85)',
+          backdropFilter: 'blur(8px)',
+          webkitBackdropFilter: 'blur(8px)',
+          cursor: 'zoom-out'
+        }}
+      />
+
+      {/* Actual Zoomed Card */}
+      <motion.div
+        initial={{ scale: 0.5, opacity: 0 }}
+        animate={{ scale: 2.8, opacity: 1 }}
+        exit={{ scale: 0.5, opacity: 0 }}
+        onClick={onClose}
+        transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+        style={{
+          position: 'relative',
+          width: '120px',
+          height: '170px',
+          borderRadius: '8px',
+          border: `2px solid ${colorStyle.color}`,
+          background: 'rgba(5, 7, 10, 0.98)',
+          boxShadow: `0 30px 60px rgba(0,0,0,0.8), 0 0 40px ${colorStyle.color}`,
+          cursor: 'zoom-out',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          zIndex: 100000
+        }}
+      >
+        {card.image_url && !imgError ? (
+          <img
+            src={card.image_url}
+            alt={card.name}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <div style={{
+            padding: '12px',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            fontSize: '0.35rem'
+          }}>
+            <div style={{ fontWeight: 800, color: colorStyle.color, borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px' }}>
+              {card.name}
+            </div>
+            <div style={{ opacity: 0.6, fontSize: '0.3rem' }}>
+              Cost: {card.cost !== null ? card.cost : '?'} • {card.ink || 'Unknown'}
+            </div>
+          </div>
+        )}
+      </motion.div>
+    </div>,
+    document.body
   );
 };
 
@@ -131,7 +248,8 @@ const CoachAnalysisTabs = ({ gameId, token, onBack }) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [mulliganExpanded, setMulliganExpanded] = useState(true);
+  const [mulliganExpanded, setMulliganExpanded] = useState(false);
+  const [activeZoomedCard, setActiveZoomedCard] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -201,51 +319,168 @@ const CoachAnalysisTabs = ({ gameId, token, onBack }) => {
     return !isMulliganed;
   });
 
+  // Match initial hand cards to their discarded status and replacements
+  const remainingMulliganed = [...mulliganed];
+  const remainingDrawn = [...drawn];
+
+  const initialHandAnalysis = initialHand.map(card => {
+    const mIdx = remainingMulliganed.findIndex(m => m.name === card.name || (m.id && m.id === card.id));
+    if (mIdx !== -1) {
+      remainingMulliganed.splice(mIdx, 1);
+      const replacementCard = remainingDrawn.shift() || null;
+      return {
+        card,
+        isDiscarded: true,
+        replacementCard
+      };
+    }
+    return {
+      card,
+      isDiscarded: false,
+      replacementCard: null
+    };
+  });
+
   // Extract deck colors and player went first state
   const playedDeckPrimaryColor = match_metadata?.your_deck_colors?.split('/')[0]?.toLowerCase();
   const playedDeckSecondaryColor = match_metadata?.your_deck_colors?.split('/')[1]?.toLowerCase();
 
-  // Parse timeline sections
-  const parseTimeline = (md) => {
-    if (!md) return [];
-    const sections = [];
-    const lines = md.split('\n');
-    let currentSection = null;
+  // Helper to streamline the timeline to setup, turns 1 & 2, pivot turn, and final turn.
+  const getStreamlinedTimeline = (timelineMd, pivotRound, totalTurns) => {
+    if (!timelineMd) return [];
+    const lines = timelineMd.split('\n');
 
-    for (const line of lines) {
-      const cleanLine = line.trim();
-      if (cleanLine.startsWith('## ')) {
-        if (currentSection) {
-          sections.push(currentSection);
+    let currentSection = '';
+    const setupLines = [];
+    const roundMap = {};
+    const overLines = [];
+
+    let currentRoundNum = null;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      if (line.startsWith('## Match Setup')) {
+        currentSection = 'setup';
+        continue;
+      } else if (line.startsWith('## Gameplay Timeline')) {
+        currentSection = 'gameplay';
+        continue;
+      } else if (line.startsWith('## Match Over!')) {
+        currentSection = 'over';
+        continue;
+      } else if (line.startsWith('## ')) {
+        currentSection = '';
+        continue;
+      }
+
+      if (currentSection === 'setup') {
+        let clean = line;
+        if (clean.startsWith('- ')) clean = clean.substring(2);
+        else if (clean.startsWith('* ')) clean = clean.substring(2);
+        setupLines.push(clean);
+      } else if (currentSection === 'gameplay') {
+        const roundMatch = line.match(/^###\s+Round\s+(\d+)/i);
+        if (roundMatch) {
+          currentRoundNum = parseInt(roundMatch[1], 10);
+          if (!roundMap[currentRoundNum]) {
+            roundMap[currentRoundNum] = [];
+          }
+          roundMap[currentRoundNum].push(`**${line.replace(/^###\s+/, '')}**`);
+        } else if (currentRoundNum !== null) {
+          let clean = line;
+          if (clean.startsWith('- ')) clean = clean.substring(2);
+          else if (clean.startsWith('* ')) clean = clean.substring(2);
+          roundMap[currentRoundNum].push(clean);
         }
-        currentSection = {
-          title: cleanLine.substring(3).trim(),
-          content: []
-        };
-      } else if (currentSection && cleanLine) {
-        let displayLine = cleanLine;
-        if (displayLine.startsWith('- ')) displayLine = displayLine.substring(2);
-        else if (displayLine.startsWith('* ')) displayLine = displayLine.substring(2);
-        currentSection.content.push(displayLine);
+      } else if (currentSection === 'over') {
+        let clean = line;
+        if (clean.startsWith('- ')) clean = clean.substring(2);
+        else if (clean.startsWith('* ')) clean = clean.substring(2);
+        overLines.push(clean);
       }
     }
-    if (currentSection) {
-      sections.push(currentSection);
+
+    const roundsInTimeline = Object.keys(roundMap).map(Number).sort((a, b) => a - b);
+    const maxRound = roundsInTimeline.length > 0 ? roundsInTimeline[roundsInTimeline.length - 1] : (totalTurns || 0);
+
+    const events = [];
+
+    // 1. Setup Event
+    if (setupLines.length > 0) {
+      events.push({
+        type: 'setup',
+        roundNumber: 0,
+        title: 'Match Setup',
+        badge: 'Setup',
+        content: setupLines
+      });
     }
-    return sections;
+
+    const targetRounds = new Set([1, 2]);
+    if (pivotRound) targetRounds.add(pivotRound);
+    if (maxRound) targetRounds.add(maxRound);
+
+    const sortedRounds = Array.from(targetRounds).sort((a, b) => a - b);
+
+    for (const rNum of sortedRounds) {
+      if (!roundMap[rNum]) continue;
+
+      let badge = '';
+      let title = `Round ${rNum}`;
+      let isPivot = rNum === pivotRound;
+      let isClimax = rNum === maxRound;
+
+      if (isPivot && isClimax) {
+        badge = 'PIVOT & CLIMAX';
+        title = `Round ${rNum} (Pivot & Final Turn)`;
+      } else if (isPivot) {
+        badge = 'PIVOT TURN';
+        title = `Round ${rNum} (Pivot Turn)`;
+      } else if (isClimax) {
+        badge = 'CLIMAX';
+        title = `Round ${rNum} (Final Turn)`;
+      } else if (rNum === 1 || rNum === 2) {
+        badge = 'Opening';
+      }
+
+      events.push({
+        type: 'round',
+        roundNumber: rNum,
+        title: title,
+        badge: badge,
+        isPivot,
+        isClimax,
+        content: roundMap[rNum]
+      });
+    }
+
+    if (overLines.length > 0) {
+      events.push({
+        type: 'climax',
+        roundNumber: maxRound + 1,
+        title: 'Match Verdict',
+        badge: 'Verdict',
+        content: overLines
+      });
+    }
+
+    return events;
   };
 
-  const parsedTimeline = parseTimeline(timeline);
+  const streamlinedTimeline = getStreamlinedTimeline(timeline, pivot_turn?.round_number, match_metadata?.turns);
+
 
   return (
     <div style={{ padding: '2rem 0', maxWidth: '1000px', margin: '0 auto' }}>
-      
+
       {/* Breadcrumbs Navigation */}
-      <nav style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: '8px', 
-        fontFamily: 'var(--font-technical)', 
+      <nav style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        fontFamily: 'var(--font-technical)',
         fontSize: '0.75rem',
         color: 'var(--on-surface-variant)',
         marginBottom: '1rem',
@@ -253,8 +488,8 @@ const CoachAnalysisTabs = ({ gameId, token, onBack }) => {
       }}>
         {onBack && (
           <>
-            <button 
-              onClick={onBack} 
+            <button
+              onClick={onBack}
               style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0 }}
               onMouseEnter={(e) => e.currentTarget.style.color = 'var(--primary-fixed)'}
               onMouseLeave={(e) => e.currentTarget.style.color = 'inherit'}
@@ -270,9 +505,21 @@ const CoachAnalysisTabs = ({ gameId, token, onBack }) => {
       {/* Header and Exit Button */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1.5rem', padding: '0 1rem' }}>
         <div>
+          <span style={{
+            fontFamily: 'var(--font-technical)',
+            fontSize: '0.8rem',
+            color: 'var(--primary-fixed-dim)',
+            textTransform: 'uppercase',
+            letterSpacing: '2px',
+            fontWeight: 700,
+            display: 'block',
+            marginBottom: '4px'
+          }}>
+            Analysis
+          </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <h2 style={{ fontFamily: 'var(--font-headline)', fontSize: '2.2rem', margin: 0, fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>
-              The Inkwell <span style={{ color: 'var(--primary-fixed-dim)', fontWeight: 300, fontSize: '1.6rem' }}>// Game Review</span>
+              The Inkwell
             </h2>
             <span style={{
               fontSize: '0.75rem',
@@ -309,7 +556,7 @@ const CoachAnalysisTabs = ({ gameId, token, onBack }) => {
         </div>
 
         {onBack && (
-          <button 
+          <button
             onClick={onBack}
             className="glass-panel"
             style={{
@@ -335,11 +582,11 @@ const CoachAnalysisTabs = ({ gameId, token, onBack }) => {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem', padding: '0 1rem' }}>
 
         {/* 1. MATCH OVERVIEW PANEL WITH BG LOGO AND GLOW */}
-        <section className="glass-panel" style={{ 
-          padding: '2rem', 
-          borderRadius: '16px', 
-          border: '1px solid rgba(0,240,255,0.25)', 
-          position: 'relative', 
+        <section className="glass-panel" style={{
+          padding: '2rem',
+          borderRadius: '16px',
+          border: '1px solid rgba(0,240,255,0.25)',
+          position: 'relative',
           overflow: 'hidden',
           boxShadow: '0 0 35px rgba(0, 240, 255, 0.07)'
         }}>
@@ -384,15 +631,11 @@ const CoachAnalysisTabs = ({ gameId, token, onBack }) => {
           </div>
         </section>
 
-        {/* 2. MULLIGAN ASSESSMENT PANEL (COLLAPSIBLE) */}
+        {/* 2. MULLIGAN ASSESSMENT PANEL */}
         <section className="glass-panel" style={{ padding: '2rem', borderRadius: '16px', border: '1px solid var(--glass-stroke)' }}>
-          <div 
-            onClick={() => setMulliganExpanded(!mulliganExpanded)}
-            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: mulliganExpanded ? '1.5rem' : '0', flexWrap: 'wrap', gap: '1rem', cursor: 'pointer' }}
-          >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
             <h3 style={{ fontFamily: 'var(--font-headline)', color: '#fff', fontSize: '1.25rem', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
               <Cpu size={20} style={{ color: 'var(--primary-fixed-dim)' }} /> Mulligan Phase Assessment
-              {mulliganExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
             </h3>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               {mulligan_analysis?.execution_rating && (
@@ -403,68 +646,112 @@ const CoachAnalysisTabs = ({ gameId, token, onBack }) => {
             </div>
           </div>
 
-          {mulliganExpanded && (
-            <div style={{ marginTop: '1rem' }}>
-              <blockquote style={{
-                margin: '0 0 2.5rem 0',
-                padding: '1.25rem 1.5rem',
-                borderLeft: '4px solid var(--primary-fixed-dim)',
-                background: 'radial-gradient(circle at left, rgba(0, 240, 255, 0.08) 0%, transparent 80%)',
-                borderRadius: '0 12px 12px 0',
-                fontStyle: 'italic',
-                fontSize: '1rem',
-                color: '#e2e8f0',
-                lineHeight: 1.6,
-                border: '1px solid rgba(0,240,255,0.05)',
-                borderLeftWidth: '4px'
-              }}>
-                "{mulligan_analysis?.coach_verdict}"
-              </blockquote>
+          {/* Coach's Verdict - Always visible */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <h4 style={{ margin: '0 0 8px 0', fontSize: '0.75rem', color: 'var(--primary-fixed-dim)', fontFamily: 'var(--font-technical)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Coach's Verdict
+            </h4>
+            <blockquote style={{
+              margin: 0,
+              padding: '1.25rem 1.5rem',
+              borderLeft: '4px solid var(--primary-fixed-dim)',
+              background: 'radial-gradient(circle at left, rgba(0, 240, 255, 0.08) 0%, transparent 80%)',
+              borderRadius: '0 12px 12px 0',
+              fontStyle: 'italic',
+              fontSize: '1rem',
+              color: '#e2e8f0',
+              lineHeight: 1.6,
+              border: '1px solid rgba(0,240,255,0.05)',
+              borderLeftWidth: '4px'
+            }}>
+              "{mulligan_analysis?.coach_verdict}"
+            </blockquote>
+          </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
-                {/* Keepers */}
-                <div>
-                  <h4 style={{ margin: '0 0 12px 0', fontSize: '0.8rem', color: 'var(--primary-fixed-dim)', fontFamily: 'var(--font-technical)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Kept Cards ({keepers.length})
-                  </h4>
-                  <div style={{ display: 'flex', gap: '1.25rem', overflowX: 'auto', paddingBottom: '12px' }}>
-                    {keepers.map((card, cidx) => (
-                      <MulliganCard key={cidx} card={card} />
-                    ))}
-                    {keepers.length === 0 && (
-                      <p style={{ fontSize: '0.85rem', color: 'var(--on-surface-variant)', fontStyle: 'italic' }}>No kept cards found.</p>
+          {/* Collapsible Card Breakdown Trigger */}
+          <button
+            onClick={() => setMulliganExpanded(!mulliganExpanded)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              width: '100%',
+              padding: '12px',
+              background: 'rgba(255, 255, 255, 0.02)',
+              border: '1px solid var(--glass-stroke)',
+              borderRadius: '8px',
+              color: 'var(--on-surface-variant)',
+              cursor: 'pointer',
+              fontFamily: 'var(--font-technical)',
+              fontSize: '0.8rem',
+              textTransform: 'uppercase',
+              letterSpacing: '1px',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(0, 240, 255, 0.05)';
+              e.currentTarget.style.color = '#fff';
+              e.currentTarget.style.borderColor = 'rgba(0, 240, 255, 0.3)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)';
+              e.currentTarget.style.color = 'var(--on-surface-variant)';
+              e.currentTarget.style.borderColor = 'var(--glass-stroke)';
+            }}
+          >
+            <span>{mulliganExpanded ? 'Hide Card Breakdown' : 'Show Card Breakdown'}</span>
+            {mulliganExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
+
+          {/* Expanded Card Breakdown Content */}
+          {mulliganExpanded && (
+            <div style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+              
+              {/* Row Header Indicator */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--primary-fixed-dim)', fontFamily: 'var(--font-technical)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Mulligan Decisions & Replacements
+                </span>
+                {mulliganed.length > 0 && (
+                  <span style={{ fontSize: '0.7rem', color: 'var(--on-surface-variant)', fontStyle: 'italic' }}>
+                    Row 1: Initial Hand (Discarded cards marked) • Row 2: Replacement Cards (drawn directly below discarded cards)
+                  </span>
+                )}
+              </div>
+
+              {/* Grid Wrapper with Horizontal Scroll */}
+              <div style={{ display: 'flex', gap: '1.25rem', overflowX: 'auto', paddingBottom: '20px', paddingTop: '20px', minHeight: mulliganed.length > 0 ? '420px' : '220px' }}>
+                {initialHandAnalysis.map((item, idx) => (
+                  <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', alignItems: 'center' }}>
+                    {/* Row 1: Initial Card */}
+                    <MulliganCard 
+                      card={item.card} 
+                      discarded={item.isDiscarded} 
+                      onClick={() => setActiveZoomedCard(item.card)} 
+                    />
+                    
+                    {/* Row 2: Replacement Card (only if there are mulliganed cards) */}
+                    {mulliganed.length > 0 && (
+                      <div style={{ height: '170px', width: '120px' }}>
+                        {item.isDiscarded && item.replacementCard ? (
+                          <MulliganCard 
+                            card={item.replacementCard} 
+                            onClick={() => setActiveZoomedCard(item.replacementCard)} 
+                          />
+                        ) : (
+                          <div style={{ 
+                            width: '120px', 
+                            height: '170px', 
+                            border: '1px dashed rgba(255,255,255,0.05)', 
+                            borderRadius: '8px', 
+                            background: 'rgba(255,255,255,0.01)' 
+                          }} />
+                        )}
+                      </div>
                     )}
                   </div>
-                </div>
-
-                {/* Tossed and Drawn Replacements columns */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
-                  {mulliganed.length > 0 && (
-                    <div>
-                      <h4 style={{ margin: '0 0 12px 0', fontSize: '0.8rem', color: 'var(--ink-magenta)', fontFamily: 'var(--font-technical)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                        Tossed / Mulliganed ({mulliganed.length})
-                      </h4>
-                      <div style={{ display: 'flex', gap: '1.25rem', overflowX: 'auto', paddingBottom: '12px' }}>
-                        {mulliganed.map((card, cidx) => (
-                          <MulliganCard key={cidx} card={card} />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {drawn.length > 0 && (
-                    <div>
-                      <h4 style={{ margin: '0 0 12px 0', fontSize: '0.8rem', color: 'rgba(0, 230, 118, 0.95)', fontFamily: 'var(--font-technical)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                        Drawn Replacements ({drawn.length})
-                      </h4>
-                      <div style={{ display: 'flex', gap: '1.25rem', overflowX: 'auto', paddingBottom: '12px' }}>
-                        {drawn.map((card, cidx) => (
-                          <MulliganCard key={cidx} card={card} />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                ))}
               </div>
             </div>
           )}
@@ -472,9 +759,9 @@ const CoachAnalysisTabs = ({ gameId, token, onBack }) => {
 
         {/* 3. THE PIVOT TURN PANEL (PREMIUM LAYOUT WITH GLOW) */}
         {pivot_turn && (
-          <section className="glass-panel" style={{ 
-            padding: '2rem', 
-            borderRadius: '16px', 
+          <section className="glass-panel" style={{
+            padding: '2rem',
+            borderRadius: '16px',
             border: '1px solid rgba(0, 240, 255, 0.25)',
             boxShadow: '0 0 35px rgba(0, 240, 255, 0.1)',
             overflow: 'hidden',
@@ -484,13 +771,13 @@ const CoachAnalysisTabs = ({ gameId, token, onBack }) => {
               <h3 style={{ fontFamily: 'var(--font-headline)', color: '#fff', fontSize: '1.25rem', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <Zap size={20} style={{ color: 'rgba(0, 240, 255, 0.9)' }} /> The Pivot Turn
               </h3>
-              <span style={{ 
-                background: 'rgba(0, 240, 255, 0.1)', 
-                border: '1px solid var(--primary-fixed-dim)', 
-                color: 'var(--primary-fixed)', 
-                padding: '4px 14px', 
-                borderRadius: '20px', 
-                fontSize: '0.75rem', 
+              <span style={{
+                background: 'rgba(0, 240, 255, 0.1)',
+                border: '1px solid var(--primary-fixed-dim)',
+                color: 'var(--primary-fixed)',
+                padding: '4px 14px',
+                borderRadius: '20px',
+                fontSize: '0.75rem',
                 fontWeight: 'bold',
                 fontFamily: 'var(--font-technical)',
                 textTransform: 'uppercase'
@@ -500,7 +787,7 @@ const CoachAnalysisTabs = ({ gameId, token, onBack }) => {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
-              
+
               {/* Left Column: Turn & State indicators */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', justifyContent: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
@@ -598,53 +885,158 @@ const CoachAnalysisTabs = ({ gameId, token, onBack }) => {
           </section>
         )}
 
-        {/* 4. TURN-BY-TURN MOMENTUM TIMELINE PANEL */}
-        {parsedTimeline.length > 0 && (
+        {/* 4. STREAMLINED GAME TIMELINE PANEL */}
+        {streamlinedTimeline.length > 0 && (
           <section className="glass-panel" style={{ padding: '2rem', borderRadius: '16px', border: '1px solid var(--glass-stroke)' }}>
             <h3 style={{ fontFamily: 'var(--font-headline)', color: '#fff', fontSize: '1.25rem', margin: '0 0 2rem 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Clock size={20} style={{ color: 'var(--primary-fixed-dim)' }} /> Turn-by-Turn Momentum Timeline
+              <Clock size={20} style={{ color: 'var(--primary-fixed-dim)' }} /> Match Momentum Timeline
             </h3>
 
             <div style={{ position: 'relative', paddingLeft: '2.5rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
               {/* Vertical timeline connector line */}
               <div className="timeline-line" style={{ left: '15px', width: '2px', background: 'rgba(255,255,255,0.06)' }} />
 
-              {parsedTimeline.map((sect, sIdx) => {
-                const isActive = sect.title.toLowerCase().includes('turn') || sect.title.toLowerCase().includes('setup');
+              {streamlinedTimeline.map((event, sIdx) => {
+                const isPivot = event.isPivot;
+                const isClimax = event.isClimax;
+                const isSetup = event.type === 'setup';
+                const isVerdict = event.type === 'climax'; // Verdict event
+
+                // Color configuration for timeline dots and badges
+                let badgeStyle = {
+                  fontSize: '0.65rem',
+                  fontWeight: 800,
+                  padding: '3px 8px',
+                  borderRadius: '12px',
+                  textTransform: 'uppercase',
+                  fontFamily: 'var(--font-technical)',
+                  border: '1px solid'
+                };
+
+                let dotBg = 'var(--outline-variant)';
+                let dotGlow = 'none';
+                let itemBorderColor = 'var(--glass-stroke)';
+                let itemBg = 'transparent';
+
+                if (isPivot) {
+                  badgeStyle = {
+                    ...badgeStyle,
+                    background: 'rgba(0, 240, 255, 0.1)',
+                    borderColor: 'rgba(0, 240, 255, 0.3)',
+                    color: 'var(--primary-fixed-dim)',
+                    boxShadow: '0 0 8px rgba(0, 240, 255, 0.15)'
+                  };
+                  dotBg = 'var(--primary-fixed-dim)';
+                  dotGlow = '0 0 10px var(--primary-fixed)';
+                  itemBorderColor = 'rgba(0, 240, 255, 0.2)';
+                  itemBg = 'rgba(0, 240, 255, 0.01)';
+                } else if (isClimax || isVerdict) {
+                  badgeStyle = {
+                    ...badgeStyle,
+                    background: 'rgba(255, 45, 85, 0.1)',
+                    borderColor: 'rgba(255, 45, 85, 0.3)',
+                    color: 'var(--ink-magenta)',
+                    boxShadow: '0 0 8px rgba(255, 45, 85, 0.15)'
+                  };
+                  dotBg = 'var(--ink-magenta)';
+                  dotGlow = '0 0 10px rgba(255, 45, 85, 0.5)';
+                  itemBorderColor = 'rgba(255, 45, 85, 0.2)';
+                  itemBg = 'rgba(255, 45, 85, 0.01)';
+                } else if (isSetup) {
+                  badgeStyle = {
+                    ...badgeStyle,
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    color: 'var(--on-surface-variant)'
+                  };
+                  dotBg = 'rgba(255, 255, 255, 0.3)';
+                  dotGlow = 'none';
+                } else {
+                  // Standard opening turns
+                  badgeStyle = {
+                    ...badgeStyle,
+                    background: 'rgba(0, 240, 255, 0.05)',
+                    borderColor: 'rgba(0, 240, 255, 0.1)',
+                    color: 'var(--primary-fixed-dim)'
+                  };
+                  dotBg = 'rgba(0, 240, 255, 0.4)';
+                }
+
+                const hasCustomBg = itemBg !== 'transparent';
+
                 return (
-                  <div key={sIdx} style={{ position: 'relative' }}>
+                  <div key={sIdx} style={{
+                    position: 'relative',
+                    background: itemBg,
+                    border: hasCustomBg ? `1px solid ${itemBorderColor}` : 'none',
+                    borderRadius: '12px',
+                    padding: hasCustomBg ? '1.25rem' : '0',
+                    marginLeft: hasCustomBg ? '-1.25rem' : '0'
+                  }}>
                     {/* Glowing Timeline Dot */}
-                    <div 
-                      className={`timeline-dot ${isActive ? 'active' : ''}`}
-                      style={{ 
-                        left: '-32px', 
-                        top: '5px',
-                        background: isActive ? 'var(--primary-fixed-dim)' : 'var(--outline-variant)',
-                        boxShadow: isActive ? '0 0 10px var(--primary-fixed)' : 'none'
-                      }} 
+                    <div
+                      className="timeline-dot"
+                      style={{
+                        left: hasCustomBg ? '-20px' : '-32px',
+                        top: hasCustomBg ? '25px' : '5px',
+                        background: dotBg,
+                        boxShadow: dotGlow,
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        position: 'absolute',
+                        zIndex: 2
+                      }}
                     />
 
                     <div>
-                      <h4 style={{ 
-                        margin: 0, 
-                        fontSize: '1rem', 
-                        fontFamily: 'var(--font-technical)', 
-                        color: isActive ? '#fff' : 'var(--on-surface-variant)',
-                        fontWeight: 700 
-                      }}>
-                        {sect.title}
-                      </h4>
-                      
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
-                        {sect.content.map((act, aIdx) => {
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                        <h4 style={{
+                          margin: 0,
+                          fontSize: '1rem',
+                          fontFamily: 'var(--font-technical)',
+                          color: '#fff',
+                          fontWeight: 700
+                        }}>
+                          {event.title}
+                        </h4>
+                        {event.badge && (
+                          <span style={badgeStyle}>
+                            {event.badge}
+                          </span>
+                        )}
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {event.content.map((act, aIdx) => {
                           const isYou = act.includes('You ') || act.includes('You(') || act.startsWith('You');
-                          
+                          const isSubHeader = act.startsWith('**') && act.endsWith('**');
+
+                          if (isSubHeader) {
+                            const cleanHeader = act.replace(/^\*\*|\*\*$/g, '');
+                            return (
+                              <h5 key={aIdx} style={{
+                                margin: '12px 0 6px 0',
+                                fontSize: '0.8rem',
+                                color: 'rgba(255,255,255,0.7)',
+                                fontWeight: 700,
+                                fontFamily: 'var(--font-technical)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                              }}>
+                                <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--primary-fixed-dim)' }} />
+                                {cleanHeader}
+                              </h5>
+                            );
+                          }
+
                           return (
-                            <p 
-                              key={aIdx} 
-                              style={{ 
-                                margin: 0, 
-                                fontSize: '0.85rem', 
+                            <p
+                              key={aIdx}
+                              style={{
+                                margin: 0,
+                                fontSize: '0.85rem',
                                 color: isYou ? 'var(--on-surface)' : 'var(--on-surface-variant)',
                                 lineHeight: 1.5,
                                 background: isYou ? 'rgba(0, 240, 255, 0.02)' : 'transparent',
@@ -673,10 +1065,10 @@ const CoachAnalysisTabs = ({ gameId, token, onBack }) => {
             <h3 style={{ fontFamily: 'var(--font-headline)', color: '#fff', fontSize: '1.25rem', margin: '0 0 1.5rem 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <Sparkles size={20} style={{ color: 'var(--primary-fixed-dim)' }} /> Ultimate Takeaways
             </h3>
-            
-            <div className="glass-panel" style={{ 
-              padding: '2rem', 
-              borderRadius: '16px', 
+
+            <div className="glass-panel" style={{
+              padding: '2rem',
+              borderRadius: '16px',
               border: '1px solid var(--glass-stroke)',
               lineHeight: 1.7,
               fontSize: '0.95rem',
@@ -692,6 +1084,16 @@ const CoachAnalysisTabs = ({ gameId, token, onBack }) => {
         )}
 
       </div>
+
+      {/* Portalled global zoomed card modal layer */}
+      <AnimatePresence>
+        {activeZoomedCard && (
+          <ZoomedCardModal
+            card={activeZoomedCard}
+            onClose={() => setActiveZoomedCard(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };

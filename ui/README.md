@@ -1,16 +1,33 @@
-# React + Vite
+# Lorcana Coach AI – Web UI Dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is the React + Vite frontend for the Lorcana Coach AI dashboard. It communicates with the FastAPI backend to render match history, deck stats, and detailed post-game coaching logs (mulligan decisions, pivot turns, and key takeaways).
 
-Currently, two official plugins are available:
+## Prerequisites
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Before starting the frontend, ensure you have:
+1. **Node.js** installed (v18+ recommended).
+2. The **Backend API Server** running at `http://127.0.0.1:8000` (refer to the root [README.md](file:///e:/Antigravity%20workspaces/Lorcana%20Coach%20AI/Log%20fetching/README.md) for details).
 
-## React Compiler
+## Setup & Running
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+1. **Navigate to the UI directory** (from the project root):
+   ```bash
+   cd ui
+   ```
 
-## Expanding the ESLint configuration
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+3. **Start the development server**:
+   ```bash
+   npm run dev
+   ```
+
+Once started, the CLI output will display the local URL (usually `http://localhost:5173`). Open this URL in your web browser.
+
+## Project Structure & Architecture
+
+- **`src/components/`**: Reusable UI blocks such as `Hero.jsx`, deck panels, match list details, and coach timeline visualizers.
+- **Vite Proxy**: The dev server is configured via `vite.config.js` to proxy `/api` requests to the FastAPI backend running on port `8000`. This bypasses CORS restrictions in local development.

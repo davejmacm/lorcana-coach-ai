@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  BookOpen, TrendingUp, Clock, Sparkles, Cpu, Layers, 
-  ArrowRight, ChevronRight, AlertCircle, CheckCircle2, 
-  XCircle, ArrowLeft, Loader2, Award, ExternalLink
+import {
+  BookOpen, TrendingUp, Clock, Sparkles, Cpu, Layers,
+  ArrowRight, ChevronRight, AlertCircle, CheckCircle2,
+  XCircle, ArrowLeft, Loader2, Award, ExternalLink, ChartNoAxesCombined, Droplet
 } from 'lucide-react';
 import DeckColorBadge from './DeckColorBadge';
 
@@ -16,11 +17,102 @@ const inkColors = {
   Steel: { color: '#90a4ae', bg: 'rgba(144,164,174,0.15)' }
 };
 
+const ZoomedCardModal = ({ activeKey, keySynergies, onClose }) => {
+  if (!activeKey) return null;
+  const [synIdx, cardIdx] = activeKey.split('-').map(Number);
+  const targetCard = keySynergies?.[synIdx]?.cards?.[cardIdx];
+  if (!targetCard) return null;
+
+  const colorStyle = inkColors[targetCard.ink] || { color: '#00dbe9' };
+
+  return createPortal(
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100vw',
+      height: '100vh',
+      zIndex: 99999,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }}>
+      {/* Backdrop */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(3, 5, 8, 0.85)',
+          backdropFilter: 'blur(8px)',
+          webkitBackdropFilter: 'blur(8px)',
+          cursor: 'zoom-out'
+        }}
+      />
+
+      {/* Actual Zoomed Card */}
+      <motion.div
+        initial={{ scale: 0.5, opacity: 0 }}
+        animate={{ scale: 2.8, opacity: 1 }}
+        exit={{ scale: 0.5, opacity: 0 }}
+        onClick={onClose}
+        transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+        style={{
+          position: 'relative',
+          width: '120px',
+          height: '170px',
+          borderRadius: '8px',
+          border: `2px solid ${colorStyle.color}`,
+          background: 'rgba(5, 7, 10, 0.98)',
+          boxShadow: `0 30px 60px rgba(0,0,0,0.8), 0 0 40px ${colorStyle.color}`,
+          cursor: 'zoom-out',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          zIndex: 100000
+        }}
+      >
+        {targetCard.image_url ? (
+          <img
+            src={targetCard.image_url}
+            alt={targetCard.name}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        ) : (
+          <div style={{
+            padding: '12px',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            fontSize: '0.35rem'
+          }}>
+            <div style={{ fontWeight: 800, color: colorStyle.color, borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px' }}>
+              {targetCard.name}
+            </div>
+            <div style={{ opacity: 0.6, fontSize: '0.3rem' }}>
+              Cost: {targetCard.cost} • {targetCard.ink}
+            </div>
+          </div>
+        )}
+      </motion.div>
+    </div>,
+    document.body
+  );
+};
+
 const LorebookReview = ({ deckId, decks = [], token, onSelectDeck, onBackToDashboard, onSelectMatch, matches = [] }) => {
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [hoveredCardKey, setHoveredCardKey] = useState(null);
+  const [activeZoomedCardKey, setActiveZoomedCardKey] = useState(null);
 
   const activeDeck = decks.find(d => d.id === deckId);
   const primaryColorName = activeDeck?.colors?.[0]?.toLowerCase();
@@ -82,16 +174,16 @@ const LorebookReview = ({ deckId, decks = [], token, onSelectDeck, onBackToDashb
         zIndex: 10,
         overflowY: 'auto'
       }}>
-        <div 
+        <div
           onClick={onBackToDashboard}
           style={{ padding: '0 1.5rem', marginBottom: '2rem', cursor: 'pointer' }}
           onMouseEnter={(e) => e.currentTarget.style.opacity = 0.8}
           onMouseLeave={(e) => e.currentTarget.style.opacity = 1}
         >
-          <h1 style={{ 
-            fontFamily: 'var(--font-headline)', 
-            fontSize: '1.4rem', 
-            margin: 0, 
+          <h1 style={{
+            fontFamily: 'var(--font-headline)',
+            fontSize: '1.4rem',
+            margin: 0,
             color: 'var(--primary-fixed)',
             fontWeight: 800,
             display: 'flex',
@@ -152,7 +244,7 @@ const LorebookReview = ({ deckId, decks = [], token, onSelectDeck, onBackToDashb
         </div>
 
         <div style={{ padding: '0 1.5rem', marginTop: 'auto' }}>
-          <button 
+          <button
             onClick={onBackToDashboard}
             style={{
               display: 'flex',
@@ -189,19 +281,19 @@ const LorebookReview = ({ deckId, decks = [], token, onSelectDeck, onBackToDashb
       {/* Main Content Area */}
       <main style={{ flex: 1, marginLeft: '280px', padding: '2.5rem 3rem' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          
+
           {/* Breadcrumbs */}
-          <nav style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '8px', 
-            fontFamily: 'var(--font-technical)', 
+          <nav style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontFamily: 'var(--font-technical)',
             fontSize: '0.75rem',
             color: 'var(--on-surface-variant)',
             marginBottom: '1rem'
           }}>
-            <button 
-              onClick={onBackToDashboard} 
+            <button
+              onClick={onBackToDashboard}
               style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0 }}
               onMouseEnter={(e) => e.currentTarget.style.color = 'var(--primary-fixed)'}
               onMouseLeave={(e) => e.currentTarget.style.color = 'inherit'}
@@ -213,18 +305,34 @@ const LorebookReview = ({ deckId, decks = [], token, onSelectDeck, onBackToDashb
           </nav>
 
           {/* Heading block */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1.5rem' }}>
-            <div>
+
+
+          <h2 style={{
+            fontFamily: 'var(--font-headline)',
+            fontSize: '2.2rem',
+            fontWeight: 800,
+            margin: 0,
+            marginBottom: '0.9rem',
+            color: '#ffffff'
+          }}>
+            The Lorebook <span style={{ color: 'var(--primary-fixed-dim)', fontWeight: 300 }}>Review</span>
+          </h2>
+          <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: '1.5rem', flexWrap: 'wrap', gap: '0.1rem' }}>
+
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                <h2 style={{ 
-                  fontFamily: 'var(--font-headline)', 
-                  fontSize: '2.2rem', 
-                  fontWeight: 800, 
-                  margin: 0,
-                  color: '#ffffff'
+                <span style={{
+                  fontFamily: 'var(--font-technical)',
+                  fontSize: '1.2rem',
+                  color: 'var(--primary-fixed-dim)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '2px',
+                  fontWeight: 700,
+                  display: 'block',
+                  marginBottom: '4px'
                 }}>
-                  The Lorebook <span style={{ color: 'var(--primary-fixed-dim)', fontWeight: 300 }}>// {activeDeck?.colors.join('/')}</span>
-                </h2>
+                  {activeDeck?.colors.join('/')}
+                </span>
                 <span style={{
                   padding: '4px 12px',
                   borderRadius: '20px',
@@ -237,11 +345,11 @@ const LorebookReview = ({ deckId, decks = [], token, onSelectDeck, onBackToDashb
                   {activeDeck?.format}
                 </span>
               </div>
-              
+
               {/* Tags Row */}
-              <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
                 {analysis?.tags?.map(t => (
-                  <span 
+                  <span
                     key={t}
                     style={{
                       fontSize: '0.75rem',
@@ -260,7 +368,7 @@ const LorebookReview = ({ deckId, decks = [], token, onSelectDeck, onBackToDashb
 
             {/* Top Improvement Card */}
             {analysis?.top_improvement && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 className="glass-panel"
@@ -287,10 +395,10 @@ const LorebookReview = ({ deckId, decks = [], token, onSelectDeck, onBackToDashb
                   <TrendingUp size={20} />
                 </div>
                 <div>
-                  <span style={{ 
-                    fontFamily: 'var(--font-technical)', 
-                    fontSize: '0.65rem', 
-                    color: 'var(--primary-fixed)', 
+                  <span style={{
+                    fontFamily: 'var(--font-technical)',
+                    fontSize: '0.65rem',
+                    color: 'var(--primary-fixed)',
                     textTransform: 'uppercase',
                     fontWeight: 700,
                     letterSpacing: '1px',
@@ -358,13 +466,13 @@ const LorebookReview = ({ deckId, decks = [], token, onSelectDeck, onBackToDashb
                 <p style={{ margin: 0, color: 'var(--on-surface-variant)', fontSize: '0.95rem', lineHeight: 1.6 }}>
                   Our AI Coach needs at least <strong>3 games</strong> logged with <strong>{activeDeck?.name.split(' (')[0]}</strong> on Duels.ink to run comprehensive archetype analytics.
                 </p>
-                <div style={{ 
-                  display: 'inline-flex', 
-                  alignItems: 'center', 
-                  gap: '8px', 
-                  background: 'rgba(255,255,255,0.03)', 
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: 'rgba(255,255,255,0.03)',
                   border: '1px solid var(--glass-stroke)',
-                  padding: '6px 12px', 
+                  padding: '6px 12px',
                   borderRadius: '6px',
                   marginTop: '1.5rem',
                   fontSize: '0.8rem',
@@ -376,44 +484,41 @@ const LorebookReview = ({ deckId, decks = [], token, onSelectDeck, onBackToDashb
             </div>
           ) : (
             <div>
-              
+
               {/* Stats Row */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
-                
-                {/* Stat 1 */}
+
+                {/* Stat 1 - Archetype Win Rate */}
                 <div className="glass-panel gradient-stroke" style={{ padding: '1.5rem', borderRadius: '14px', overflow: 'hidden', position: 'relative' }}>
-                  {primaryColorName && (
-                    <div style={{
-                      position: 'absolute',
-                      bottom: '-15px',
-                      right: '-15px',
-                      width: '80px',
-                      height: '80px',
-                      backgroundImage: `url(/ink-icons/${primaryColorName}.png)`,
-                      backgroundSize: 'contain',
-                      backgroundRepeat: 'no-repeat',
-                      opacity: 0.05,
-                      pointerEvents: 'none',
-                      zIndex: 0
-                    }} />
-                  )}
-                  <span style={{ 
-                    fontFamily: 'var(--font-technical)', 
-                    fontSize: '0.7rem', 
-                    color: 'var(--on-surface-variant)', 
-                    textTransform: 'uppercase',
-                    letterSpacing: '1px',
-                    position: 'relative',
-                    zIndex: 1
+                  <div style={{
+                    position: 'absolute',
+                    top: '10px',
+                    right: '10px',
+                    opacity: 0.08,
+                    color: 'var(--primary-fixed-dim)',
+                    pointerEvents: 'none',
+                    zIndex: 0
                   }}>
-                    Archetype Win Rate
-                  </span>
+                    <ChartNoAxesCombined size={90} strokeWidth={1.5} />
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 1, marginBottom: '10px' }}>
+                    <span style={{
+                      fontFamily: 'var(--font-technical)',
+                      fontSize: '0.7rem',
+                      color: 'var(--on-surface-variant)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '1px'
+                    }}>
+                      Archetype Win Rate
+                    </span>
+                  </div>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '10px', position: 'relative', zIndex: 1 }}>
                     <span style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--primary-fixed)', fontFamily: 'var(--font-headline)' }}>
                       {analysis.metrics?.personal_win_rate}
                     </span>
-                    <span style={{ 
-                      fontSize: '0.8rem', 
+                    <span style={{
+                      fontSize: '0.8rem',
                       color: analysis.metrics?.win_rate_delta?.startsWith('+') ? 'var(--primary-fixed-dim)' : 'var(--error)',
                       fontWeight: 600
                     }}>
@@ -421,53 +526,49 @@ const LorebookReview = ({ deckId, decks = [], token, onSelectDeck, onBackToDashb
                     </span>
                   </div>
                   <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', marginTop: '1rem', overflow: 'hidden', position: 'relative', zIndex: 1 }}>
-                    <div style={{ 
-                      width: analysis.metrics?.personal_win_rate || '0%', 
-                      height: '100%', 
+                    <div style={{
+                      width: analysis.metrics?.personal_win_rate || '0%',
+                      height: '100%',
                       background: 'var(--primary-fixed-dim)',
                       boxShadow: '0 0 10px var(--primary-fixed-dim)'
                     }} />
                   </div>
                 </div>
 
-                {/* Stat 2 */}
+                {/* Stat 2 - Avg. Match Duration */}
                 <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: '14px', overflow: 'hidden', position: 'relative' }}>
-                  {(secondaryColorName || primaryColorName) && (
-                    <div style={{
-                      position: 'absolute',
-                      bottom: '-15px',
-                      right: '-15px',
-                      width: '80px',
-                      height: '80px',
-                      backgroundImage: `url(/ink-icons/${secondaryColorName || primaryColorName}.png)`,
-                      backgroundSize: 'contain',
-                      backgroundRepeat: 'no-repeat',
-                      opacity: 0.05,
-                      pointerEvents: 'none',
-                      zIndex: 0
-                    }} />
-                  )}
-                  <span style={{ 
-                    fontFamily: 'var(--font-technical)', 
-                    fontSize: '0.7rem', 
-                    color: 'var(--on-surface-variant)', 
-                    textTransform: 'uppercase',
-                    letterSpacing: '1px',
-                    position: 'relative',
-                    zIndex: 1
+                  <div style={{
+                    position: 'absolute',
+                    top: '10px',
+                    right: '10px',
+                    opacity: 0.06,
+                    color: 'var(--secondary)',
+                    pointerEvents: 'none',
+                    zIndex: 0
                   }}>
-                    Avg. Match Duration
-                  </span>
+                    <Clock size={90} strokeWidth={1.5} />
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 1, marginBottom: '10px' }}>
+                    <span style={{
+                      fontFamily: 'var(--font-technical)',
+                      fontSize: '0.7rem',
+                      color: 'var(--on-surface-variant)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '1px'
+                    }}>
+                      Avg. Match Duration
+                    </span>
+                  </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px', position: 'relative', zIndex: 1 }}>
-                    <Clock size={24} style={{ color: 'var(--secondary)' }} />
                     <span style={{ fontSize: '2.2rem', fontWeight: 800, color: '#fff', fontFamily: 'var(--font-headline)' }}>
                       {analysis.metrics?.avg_match_duration}
                     </span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px', position: 'relative', zIndex: 1 }}>
-                    <span style={{ 
-                      fontFamily: 'var(--font-technical)', 
-                      fontSize: '0.75rem', 
+                    <span style={{
+                      fontFamily: 'var(--font-technical)',
+                      fontSize: '0.75rem',
                       color: 'var(--secondary)',
                       textTransform: 'uppercase',
                       letterSpacing: '0.5px'
@@ -477,34 +578,31 @@ const LorebookReview = ({ deckId, decks = [], token, onSelectDeck, onBackToDashb
                   </div>
                 </div>
 
-                {/* Stat 3 */}
+                {/* Stat 3 - Ink Efficiency */}
                 <div className="glass-panel" style={{ padding: '1.5rem', borderRadius: '14px', overflow: 'hidden', position: 'relative' }}>
-                  {primaryColorName && (
-                    <div style={{
-                      position: 'absolute',
-                      bottom: '-15px',
-                      right: '-15px',
-                      width: '80px',
-                      height: '80px',
-                      backgroundImage: `url(/ink-icons/${primaryColorName}.png)`,
-                      backgroundSize: 'contain',
-                      backgroundRepeat: 'no-repeat',
-                      opacity: 0.05,
-                      pointerEvents: 'none',
-                      zIndex: 0
-                    }} />
-                  )}
-                  <span style={{ 
-                    fontFamily: 'var(--font-technical)', 
-                    fontSize: '0.7rem', 
-                    color: 'var(--on-surface-variant)', 
-                    textTransform: 'uppercase',
-                    letterSpacing: '1px',
-                    position: 'relative',
-                    zIndex: 1
+                  <div style={{
+                    position: 'absolute',
+                    top: '10px',
+                    right: '10px',
+                    opacity: 0.06,
+                    color: 'var(--tertiary-fixed)',
+                    pointerEvents: 'none',
+                    zIndex: 0
                   }}>
-                    Ink Efficiency
-                  </span>
+                    <Droplet size={90} strokeWidth={1.5} />
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 1, marginBottom: '10px' }}>
+                    <span style={{
+                      fontFamily: 'var(--font-technical)',
+                      fontSize: '0.7rem',
+                      color: 'var(--on-surface-variant)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '1px'
+                    }}>
+                      Ink Efficiency
+                    </span>
+                  </div>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '10px', position: 'relative', zIndex: 1 }}>
                     <span style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--tertiary-fixed)', fontFamily: 'var(--font-headline)' }}>
                       {analysis.metrics?.ink_efficiency?.rating}
@@ -521,14 +619,14 @@ const LorebookReview = ({ deckId, decks = [], token, onSelectDeck, onBackToDashb
 
               {/* Bento Grid Layout */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '1.5rem', marginBottom: '3rem' }}>
-                
+
                 {/* Left: Meta Breakdown & Synergies (Span 8) */}
                 <div style={{ gridColumn: 'span 8', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                  
+
                   {/* Performance Narrative */}
-                  <section className="glass-panel" style={{ 
-                    padding: '2rem', 
-                    borderRadius: '16px', 
+                  <section className="glass-panel" style={{
+                    padding: '2rem',
+                    borderRadius: '16px',
                     position: 'relative',
                     overflow: 'hidden'
                   }}>
@@ -540,12 +638,12 @@ const LorebookReview = ({ deckId, decks = [], token, onSelectDeck, onBackToDashb
                       width: '4px',
                       background: 'var(--primary-fixed-dim)'
                     }} />
-                    <h3 style={{ 
-                      margin: '0 0 1rem 0', 
-                      fontSize: '1.25rem', 
-                      fontFamily: 'var(--font-headline)', 
-                      display: 'flex', 
-                      alignItems: 'center', 
+                    <h3 style={{
+                      margin: '0 0 1rem 0',
+                      fontSize: '1.25rem',
+                      fontFamily: 'var(--font-headline)',
+                      display: 'flex',
+                      alignItems: 'center',
                       gap: '8px',
                       color: '#ffffff'
                     }}>
@@ -558,22 +656,25 @@ const LorebookReview = ({ deckId, decks = [], token, onSelectDeck, onBackToDashb
 
                   {/* Tactical Synergies */}
                   <section className="glass-panel" style={{ padding: '2rem', borderRadius: '16px' }}>
-                    <h3 style={{ 
-                      margin: '0 0 1.5rem 0', 
-                      fontSize: '1.25rem', 
-                      fontFamily: 'var(--font-headline)', 
-                      display: 'flex', 
-                      alignItems: 'center', 
+                    <h3 style={{
+                      margin: '0 0 1.5rem 0',
+                      fontSize: '1.25rem',
+                      fontFamily: 'var(--font-headline)',
+                      display: 'flex',
+                      alignItems: 'center',
                       gap: '8px',
                       color: '#ffffff'
                     }}>
                       <Layers size={20} style={{ color: 'var(--secondary)' }} /> Key Tactical Synergies
                     </h3>
-                    
+
+                    {/* Zoom Modal is mounted at the root layout wrapper instead to ensure exit animations track properly */}
+
+                    {/* ---- GRID LAYOUT ---- */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
                       {analysis.key_synergies?.map((syn, idx) => (
-                        <div 
-                          key={idx} 
+                        <div
+                          key={idx}
                           style={{
                             padding: '1.5rem',
                             borderRadius: '12px',
@@ -586,97 +687,100 @@ const LorebookReview = ({ deckId, decks = [], token, onSelectDeck, onBackToDashb
                           }}
                           className="synergy-card-wrapper"
                         >
-                          {/* 3D Overlapping Card Artwork illustrations */}
-                          <div style={{ 
-                            display: 'flex', 
-                            justifyContent: 'center', 
+                          {/* Card Artwork Placeholders */}
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'center',
                             position: 'relative',
                             height: '190px',
                             width: '220px',
                             marginBottom: '1rem',
                             perspective: '800px'
                           }}>
-                             {syn.cards?.map((card, cidx) => {
-                                const isHovered = hoveredCardKey === `${idx}-${cidx}`;
-                                const rotateVal = isHovered ? 0 : (cidx === 0 ? -8 : 8);
-                                const shiftX = cidx === 0 ? -24 : 24;
-                                const zIndexVal = isHovered ? 10 : (cidx === 0 ? 1 : 2);
-                                const colorStyle = inkColors[card.ink] || { color: '#00dbe9' };
-                                
-                                return (
-                                  <motion.div
-                                    key={cidx}
-                                    onMouseEnter={() => setHoveredCardKey(`${idx}-${cidx}`)}
-                                    onMouseLeave={() => setHoveredCardKey(null)}
-                                    whileHover={{ 
-                                      scale: 1.1,
-                                      boxShadow: `0 0 30px ${colorStyle.color}`
-                                    }}
-                                    style={{
-                                      position: 'absolute',
-                                      width: '120px',
-                                      height: '170px',
-                                      borderRadius: '8px',
-                                      border: `2px solid ${colorStyle.color}a0`,
-                                      background: 'rgba(5, 7, 10, 0.95)',
-                                      transform: `translateX(${shiftX}px) rotateZ(${rotateVal}deg)`,
-                                      transformStyle: 'preserve-3d',
-                                      boxShadow: '0 8px 16px rgba(0,0,0,0.6)',
-                                      zIndex: zIndexVal,
-                                      cursor: 'pointer',
-                                      overflow: 'hidden',
+                            {syn.cards?.map((card, cidx) => {
+                              const cardKey = `${idx}-${cidx}`;
+                              const isHovered = hoveredCardKey === cardKey;
+
+                              const rotateVal = cidx === 0 ? -8 : 8;
+                              const shiftX = cidx === 0 ? -24 : 24;
+                              const zIndexVal = isHovered ? 10 : (cidx === 0 ? 1 : 2);
+                              const colorStyle = inkColors[card.ink] || { color: '#00dbe9' };
+
+                              return (
+                                <motion.div
+                                  key={cardKey}
+                                  onMouseEnter={() => !activeZoomedCardKey && setHoveredCardKey(cardKey)}
+                                  onMouseLeave={() => setHoveredCardKey(null)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveZoomedCardKey(activeZoomedCardKey === cardKey ? null : cardKey);
+                                  }}
+                                  animate={{
+                                    x: shiftX,
+                                    y: isHovered ? -12 : 0,
+                                    rotateZ: rotateVal,
+                                    scale: isHovered ? 1.08 : 1,
+                                    boxShadow: isHovered
+                                      ? `0 15px 30px rgba(0,0,0,0.5), 0 0 25px ${colorStyle.color}`
+                                      : '0 8px 16px rgba(0,0,0,0.6)'
+                                  }}
+                                  transition={{
+                                    type: 'spring',
+                                    stiffness: 300,
+                                    damping: 20
+                                  }}
+                                  style={{
+                                    position: 'absolute',
+                                    width: '120px',
+                                    height: '170px',
+                                    borderRadius: '8px',
+                                    border: `2px solid ${colorStyle.color}a0`,
+                                    background: 'rgba(5, 7, 10, 0.98)',
+                                    transformStyle: 'preserve-3d',
+                                    zIndex: zIndexVal,
+                                    cursor: 'zoom-in',
+                                    overflow: 'hidden',
+                                    display: 'flex',
+                                    flexDirection: 'column'
+                                  }}
+                                >
+                                  {card.image_url ? (
+                                    <img
+                                      src={card.image_url}
+                                      alt={card.name}
+                                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                    />
+                                  ) : (
+                                    <div style={{
+                                      padding: '12px',
+                                      height: '100%',
                                       display: 'flex',
                                       flexDirection: 'column',
-                                      transition: 'transform 0.2s ease-out, z-index 0.1s'
-                                    }}
-                                  >
-                                    {card.image_url ? (
-                                      <img 
-                                        src={card.image_url} 
-                                        alt={card.name} 
-                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                                      />
-                                    ) : (
-                                      <div style={{
-                                        padding: '10px',
-                                        height: '100%',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        justifyContent: 'space-between',
-                                        fontSize: '0.65rem'
-                                      }}>
-                                        <div style={{ fontWeight: 800, color: colorStyle.color, borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px' }}>
-                                          {card.name}
-                                        </div>
-                                        <div style={{ opacity: 0.6, fontSize: '0.55rem' }}>
-                                          Cost: {card.cost} • {card.ink}
-                                        </div>
+                                      justifyContent: 'space-between',
+                                      fontSize: '0.65rem'
+                                    }}>
+                                      <div style={{ fontWeight: 800, color: colorStyle.color, borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px' }}>
+                                        {card.name}
                                       </div>
-                                    )}
-                                  </motion.div>
-                                );
-                              })}
+                                      <div style={{ opacity: 0.6, fontSize: '0.55rem' }}>
+                                        Cost: {card.cost} • {card.ink}
+                                      </div>
+                                    </div>
+                                  )}
+                                </motion.div>
+                              );
+                            })}
                           </div>
 
-                          <h4 style={{ 
-                            margin: '0 0 6px 0', 
-                            fontSize: '0.95rem', 
-                            color: 'var(--primary-fixed)', 
-                            fontWeight: 600,
-                            textAlign: 'center'
-                          }}>
-                            {syn.title}
-                          </h4>
-                          <p style={{ 
-                            margin: 0, 
-                            fontSize: '0.8rem', 
-                            color: 'var(--on-surface-variant)', 
-                            textAlign: 'center', 
-                            lineHeight: 1.5,
-                            opacity: 0.8
-                          }}>
-                            {syn.description}
-                          </p>
+                          {/* Synergy text */}
+                          <div style={{ textAlign: 'center', marginTop: 'auto' }}>
+                            <span style={{ fontWeight: 700, color: '#fff', fontSize: '1rem', display: 'block', marginBottom: '4px' }}>
+                              {syn.title}
+                            </span>
+                            <span style={{ color: 'var(--on-surface-variant)', fontSize: '0.85rem', lineHeight: 1.4 }}>
+                              {syn.description}
+                            </span>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -686,28 +790,28 @@ const LorebookReview = ({ deckId, decks = [], token, onSelectDeck, onBackToDashb
 
                 {/* Right: Directives & Timeline (Span 4) */}
                 <div style={{ gridColumn: 'span 4', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                  
+
                   {/* Coaching Directives Rail */}
-                  <aside className="glass-panel" style={{ 
-                    padding: '2rem', 
-                    borderRadius: '16px', 
-                    display: 'flex', 
+                  <aside className="glass-panel" style={{
+                    padding: '2rem',
+                    borderRadius: '16px',
+                    display: 'flex',
                     flexDirection: 'column',
                     height: '100%',
                     background: 'linear-gradient(to bottom, rgba(13, 17, 23, 0.45), rgba(5, 7, 10, 0.6))'
                   }}>
-                    <h3 style={{ 
-                      margin: '0 0 1.5rem 0', 
-                      fontSize: '1.25rem', 
-                      fontFamily: 'var(--font-headline)', 
-                      display: 'flex', 
-                      alignItems: 'center', 
+                    <h3 style={{
+                      margin: '0 0 1.5rem 0',
+                      fontSize: '1.25rem',
+                      fontFamily: 'var(--font-headline)',
+                      display: 'flex',
+                      alignItems: 'center',
                       gap: '8px',
                       color: '#ffffff'
                     }}>
                       <Award size={20} style={{ color: 'var(--tertiary-fixed)' }} /> AI Directives
                     </h3>
-                    
+
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', flex: 1 }}>
                       {analysis.coaching_directives?.map((dir, idx) => (
                         <div key={idx} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
@@ -726,9 +830,9 @@ const LorebookReview = ({ deckId, decks = [], token, onSelectDeck, onBackToDashb
                             <Sparkles size={14} />
                           </div>
                           <div>
-                            <span style={{ 
-                              fontFamily: 'var(--font-technical)', 
-                              fontSize: '0.65rem', 
+                            <span style={{
+                              fontFamily: 'var(--font-technical)',
+                              fontSize: '0.65rem',
                               color: 'var(--primary-fixed-dim)',
                               textTransform: 'uppercase',
                               fontWeight: 700,
@@ -747,9 +851,9 @@ const LorebookReview = ({ deckId, decks = [], token, onSelectDeck, onBackToDashb
 
                     {/* Timeline Graph */}
                     <div style={{ borderTop: '1px solid var(--glass-stroke)', paddingTop: '1.5rem', marginTop: '1.5rem' }}>
-                      <h4 style={{ 
-                        fontFamily: 'var(--font-technical)', 
-                        fontSize: '0.7rem', 
+                      <h4 style={{
+                        fontFamily: 'var(--font-technical)',
+                        fontSize: '0.7rem',
                         color: 'var(--on-surface-variant)',
                         textTransform: 'uppercase',
                         letterSpacing: '1px',
@@ -762,11 +866,11 @@ const LorebookReview = ({ deckId, decks = [], token, onSelectDeck, onBackToDashb
                           const percent = val.percentage || 0;
                           const barColor = key === 'early' ? 'var(--primary-fixed)' : key === 'mid' ? 'var(--secondary)' : 'var(--tertiary-fixed)';
                           const glowShadow = key === 'early' ? 'rgba(0, 240, 255, 0.25)' : key === 'mid' ? 'rgba(171, 71, 188, 0.25)' : 'rgba(234, 195, 36, 0.25)';
-                          
+
                           return (
                             <div key={key} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', height: '100%', justifyContent: 'end' }}>
                               <span style={{ fontSize: '0.75rem', fontWeight: 700, color: barColor }}>{percent}%</span>
-                              <motion.div 
+                              <motion.div
                                 initial={{ height: 0 }}
                                 animate={{ height: `${percent * 0.8}%` }}
                                 style={{
@@ -777,9 +881,9 @@ const LorebookReview = ({ deckId, decks = [], token, onSelectDeck, onBackToDashb
                                 }}
                                 whileHover={{ filter: 'brightness(1.2)' }}
                               />
-                              <span style={{ 
-                                fontSize: '0.65rem', 
-                                color: 'rgba(220, 228, 229, 0.4)', 
+                              <span style={{
+                                fontSize: '0.65rem',
+                                color: 'rgba(220, 228, 229, 0.4)',
                                 fontFamily: 'var(--font-technical)',
                                 textTransform: 'capitalize',
                                 marginTop: '4px'
@@ -800,22 +904,22 @@ const LorebookReview = ({ deckId, decks = [], token, onSelectDeck, onBackToDashb
 
               {/* Filtered Matches List */}
               <div style={{ marginBottom: '4rem' }}>
-                <h3 style={{ 
-                  fontFamily: 'var(--font-headline)', 
-                  fontSize: '1.4rem', 
+                <h3 style={{
+                  fontFamily: 'var(--font-headline)',
+                  fontSize: '1.4rem',
                   marginBottom: '1.5rem',
                   color: '#ffffff'
                 }}>
                   Recent Matches ({activeDeck?.name.split(' (')[0]})
                 </h3>
-                
+
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {deckMatches.map(m => {
                     const isWin = m.result?.toLowerCase() === 'win';
                     return (
-                      <div 
-                        key={m.game_id} 
-                        className="glass-panel glass-panel-hover" 
+                      <div
+                        key={m.game_id}
+                        className="glass-panel glass-panel-hover"
                         style={{
                           padding: '1.25rem 2rem',
                           borderRadius: '12px',
@@ -909,6 +1013,17 @@ const LorebookReview = ({ deckId, decks = [], token, onSelectDeck, onBackToDashb
 
         </div>
       </main>
+
+      {/* Portalled global zoomed card modal layer */}
+      <AnimatePresence>
+        {activeZoomedCardKey && (
+          <ZoomedCardModal
+            activeKey={activeZoomedCardKey}
+            keySynergies={analysis?.key_synergies}
+            onClose={() => setActiveZoomedCardKey(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
